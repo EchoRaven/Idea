@@ -1,7 +1,8 @@
 // IdeaSync —— Ideas 仓库的桌面应用
 //
-// 三个标签页：
-//   项目 —— 随手记 idea + 每个项目的断点/下一步（回来时不迷路的那两栏）
+// 四个标签页：
+//   INBOX —— 待分流的 idea + 冷藏区 SOMEDAY
+//   项目 —— 每个项目的断点/下一步（回来时不迷路的那两栏）
 //   同步 —— 拉取远端、调 agent 更新索引、推送，带实时日志
 //   设置 —— 自动推送、轮询间隔、开机启动
 //
@@ -149,6 +150,7 @@ final class Store: ObservableObject {
     @Published var pollMinutes = 10
     @Published var launchAtLogin = false
     @Published var inboxItems: [InboxItem] = []
+    @Published var somedayItems: [InboxItem] = []
     @Published var toast = ""
 
     var inboxCount: Int { inboxItems.count }
@@ -171,6 +173,7 @@ final class Store: ObservableObject {
             projects = parseProjects(t)
         }
         loadInbox()
+        loadSomeday()
         refreshCounts()
         loadLogTail()
     }
@@ -197,6 +200,48 @@ final class Store: ObservableObject {
             }
     }
 
+    /// 追加到 SOMEDAY.md 的「待归类」分区。
+    /// 早期版本是无脑追加到文件末尾，结果条目落进了最后一个分区（比如「学习/研究」）
+    /// 下面 —— 分类是错的。这里改成显式建一个待归类分区，宁可让你手动归类，
+    /// 也不要悄悄放错地方。
+    func appendToSomeday(_ dest: String, _ item: InboxItem) {
+        let marker = "## 待归类（从 INBOX 移入）"
+        let entry = "- \(item.date) \(item.text)"
+        guard var text = try? String(contentsOfFile: dest, encoding: .utf8) else { return }
+
+        if let r = text.range(of: marker) {
+            // 插到该分区标题后面第一行
+            let after = text.index(r.upperBound, offsetBy: 0)
+            let head = String(text[text.startIndex..<after])
+            let tail = String(text[after...])
+            text = head + "\n\n" + entry + tail.replacingOccurrences(
+                of: "^\n+", with: "\n", options: .regularExpression)
+        } else {
+            if !text.hasSuffix("\n") { text += "\n" }
+            text += "\n---\n\n\(marker)\n\n> 这些是从 INBOX 移过来但还没归类的。挑个时间把它们放进上面对应的分区。\n\n\(entry)\n"
+        }
+        try? text.write(toFile: dest, atomically: true, encoding: .utf8)
+    }
+
+    func loadSomeday() {
+        guard let t = try? String(contentsOfFile: repoPath("SOMEDAY.md"), encoding: .utf8) else {
+            somedayItems = []; return
+        }
+        var section = ""
+        var out: [InboxItem] = []
+        for line in t.components(separatedBy: .newlines) {
+            if line.hasPrefix("## ") {
+                section = String(line.dropFirst(3)).trimmingCharacters(in: .whitespaces)
+                continue
+            }
+            guard line.hasPrefix("- ") else { continue }
+            let body = String(line.dropFirst(2)).trimmingCharacters(in: .whitespaces)
+            if body.isEmpty { continue }          // 跳过 "-" 占位行
+            out.append(InboxItem(date: section, text: body, raw: line))
+        }
+        somedayItems = out
+    }
+
     /// 从 INBOX.md 删掉一行；moveTo 非空时先把它追加到那个文件
     func removeFromInbox(_ item: InboxItem, moveTo: String? = nil) {
         guard let t = try? String(contentsOfFile: inboxFile, encoding: .utf8) else { return }
@@ -208,15 +253,11 @@ final class Store: ObservableObject {
         }
         guard removed else { flash("没找到这一条，可能已被手工改过"); return }
 
-        if let dest = moveTo,
-           var d = try? String(contentsOfFile: dest, encoding: .utf8) {
-            if !d.hasSuffix("\n") { d += "\n" }
-            d += "- \(item.date) \(item.text)\n"
-            try? d.write(toFile: dest, atomically: true, encoding: .utf8)
-        }
+        if let dest = moveTo { appendToSomeday(dest, item) }
         try? kept.joined(separator: "\n").write(toFile: inboxFile, atomically: true, encoding: .utf8)
         loadInbox()
-        flash(moveTo == nil ? "已删除" : "已移入 SOMEDAY")
+        loadSomeday()
+        flash(moveTo == nil ? "已删除" : "已移入 SOMEDAY 的待归类分区")
     }
 
     func refreshCounts() {
@@ -481,6 +522,7 @@ struct TopBar: View {
 
 struct InboxTab: View {
     @EnvironmentObject var s: Store
+    @State private var showSomeday = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -536,6 +578,41 @@ struct InboxTab: View {
                     .font(.caption).foregroundStyle(.secondary)
                     .padding(.horizontal, 20).padding(.bottom, 14)
             }
+
+            Divider()
+
+            // 冷藏区 —— 移走的东西必须还能看见，否则等于丢了
+            DisclosureGroup(isExpanded: $showSomeday) {
+                if s.somedayItems.isEmpty {
+                    Text("SOMEDAY 还是空的。").font(.caption)
+                        .foregroundStyle(.secondary).padding(.vertical, 6)
+                } else {
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(s.somedayItems) { it in
+                            HStack(alignment: .top, spacing: 8) {
+                                Text(it.date).font(.caption2)
+                                    .padding(.horizontal, 6).padding(.vertical, 2)
+                                    .background(.quaternary, in: Capsule())
+                                Text(it.text).font(.caption).textSelection(.enabled)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                Spacer(minLength: 0)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 6)
+                }
+            } label: {
+                HStack {
+                    Text("冷藏区 SOMEDAY").font(.callout).bold()
+                    Text("\(s.somedayItems.count) 条").font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                    Button("打开文件") {
+                        NSWorkspace.shared.open(URL(fileURLWithPath: repoPath("SOMEDAY.md")))
+                    }.controlSize(.small)
+                }
+            }
+            .frame(maxHeight: 220)
+            .padding(.horizontal, 20).padding(.vertical, 12)
         }
     }
 }
