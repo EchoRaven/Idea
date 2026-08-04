@@ -49,5 +49,6 @@ Factors, tasks, and attacker guidance each have **three authoring paths**: manua
 | [02-progress.md](02-progress.md) | milestones done / validated / in-flight / blocked / next |
 | [03-findings.md](03-findings.md) | scientific results: the three-gate defense, the one crack, direct-probe-overstates |
 | [04-runbook.md](04-runbook.md) | how to run every tool + the Tier-2 launchers + operational caveats |
+| [05-using-victims-from-another-repo.md](05-using-victims-from-another-repo.md) | integration guide: call the victim + attacker/judge models from any other repo (endpoints, keys, reusable client, code) |
 
 _Last updated: 2026-08-04._
