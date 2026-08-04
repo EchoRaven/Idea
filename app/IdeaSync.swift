@@ -156,14 +156,37 @@ final class Store: ObservableObject {
     var inboxCount: Int { inboxItems.count }
 
     private var timer: Timer?
+    private var watchTimer: Timer?
     private var proc: Process?
+    private var externalRunning = false
 
     init() {
         reload()
         autoPush = readConf("AUTO_PUSH") == "1"
         launchAtLogin = FileManager.default.fileExists(atPath: plistPath)
         startTimer()
+        startWatch()
         sync()
+    }
+
+    /// 监视外部（比如上一个 app 实例遗留的孤儿脚本）正在跑的同步。
+    /// 没有这个的话界面会一直停在旧状态，看起来像卡死。
+    func startWatch() {
+        watchTimer?.invalidate()
+        watchTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
+            guard let self = self, !self.busy else { return }
+            let pid = shell("cat '\(ideasDir)/sync/.lock/pid' 2>/dev/null")
+            let alive = !pid.isEmpty && shell("kill -0 \(pid) 2>/dev/null && echo alive") == "alive"
+            if alive {
+                if !self.externalRunning { self.externalRunning = true }
+                self.status = "后台同步进行中…"
+                self.loadLogTail()
+            } else if self.externalRunning {
+                self.externalRunning = false
+                self.reload()
+                self.status = "后台同步已完成"
+            }
+        }
     }
 
     // MARK: 读取

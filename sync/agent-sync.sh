@@ -23,6 +23,7 @@ LOG="$SYNC_DIR/agent-sync.log"
 AUTO_PUSH=0                                  # 1 = agent 改完直接推；0 = 等你在菜单里点确认
 MODEL="claude-sonnet-5"
 MAX_FILES=25                                 # 单次交给 agent 的文件数上限
+AGENT_TIMEOUT=900                            # agent 单次分析最长秒数，超时终止
 [ -f "$CONF" ] && . "$CONF"
 
 FORCE=0; CHECK_ONLY=0
@@ -207,13 +208,32 @@ $CHANGED
 
 最后用 3-5 行中文总结你改了什么、发现了什么值得注意的。"
 
-OUT="$("$CLAUDE" -p "$PROMPT" \
-        --model "$MODEL" \
-        --permission-mode acceptEdits \
-        --allowedTools Read Edit Write Glob Grep \
-        --disallowedTools Bash \
-        --add-dir "$IDEAS_DIR" 2>&1)"
-RC=$?
+# 超时必须由脚本自己管：早期版本把保险丝放在 app 里，app 一退出
+# 脚本就变成没有任何超时保护的孤儿进程，可能永远挂着。
+TMPOUT="$(mktemp)"
+"$CLAUDE" -p "$PROMPT" \
+    --model "$MODEL" \
+    --permission-mode acceptEdits \
+    --allowedTools Read Edit Write Glob Grep \
+    --disallowedTools Bash \
+    --add-dir "$IDEAS_DIR" > "$TMPOUT" 2>&1 &
+CPID=$!
+trap 'kill -TERM '"$CPID"' 2>/dev/null; rm -rf "$LOCKDIR" "$TMPOUT"' EXIT INT TERM
+
+WAITED=0
+while kill -0 "$CPID" 2>/dev/null; do
+  if [ "$WAITED" -ge "$AGENT_TIMEOUT" ]; then
+    kill -TERM "$CPID" 2>/dev/null; command sleep 3; kill -KILL "$CPID" 2>/dev/null
+    die "agent 超时（${AGENT_TIMEOUT} 秒）已终止，本轮未改动"
+  fi
+  command sleep 5
+  WAITED=$((WAITED + 5))
+  # 每分钟报一次，让界面知道还活着
+  [ $((WAITED % 60)) -eq 0 ] && say "agent 分析中… 已 $((WAITED / 60)) 分钟"
+done
+wait "$CPID"; RC=$?
+OUT="$(cat "$TMPOUT")"
+rm -f "$TMPOUT"
 
 { echo "----- agent 输出 $(date '+%F %T') -----"; echo "$OUT"; } >> "$LOG"
 [ $RC -ne 0 ] && die "agent 执行失败（详见 agent-sync.log）"
