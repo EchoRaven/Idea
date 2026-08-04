@@ -9,7 +9,7 @@
 
 set -uo pipefail
 
-IDEAS_DIR="${IDEAS_DIR:-$HOME/Library/Mobile Documents/com~apple~CloudDocs/Ideas}"
+IDEAS_DIR="${IDEAS_DIR:-$HOME/Ideas}"
 SYNC_DIR="$IDEAS_DIR/sync"
 CONF="$SYNC_DIR/sources.conf"
 NEWLOG="$SYNC_DIR/new-files.log"
