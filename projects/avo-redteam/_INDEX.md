@@ -65,6 +65,12 @@ safety evaluation」—— 但这是一句 consider，**没有负责人、没有
 [capsec-strain-invariance](../capsec-strain-invariance/_INDEX.md) 的 60-run 数据里
 也出现了同一类整齐比值（depth=2 时 diversion=1.0），同样是小 n 造成的，见其索引「需要你注意的」#2。
 
+**2026-08-04 更新**：capsec-strain-invariance 把这条坑趟出了一个可以直接照抄的解法——
+给每个 cell 的比值配上 Wilson 95% CI 后，n_adm=1–3 的区间几乎覆盖整个 [0,1]，
+干净的点估计被证实只是噪声，不是信号。同样的处理可以直接套到这里的 reps=3：
+即便 3/3 全翻转，Wilson 区间大概率也宽到盖住「真实翻转率 70%」这种情况，
+在 findings 里补一句区间估计，成本很低，能防止 Δ+1.00 被当成比它实际更硬的结论引用。
+
 ### 6. 独立佐证：capsec-strain-invariance 从生成侧复现了「诽谤是防御盲区」
 
 `03-findings` §4 的三闸门模型认定「诽谤类记录归档转述」是唯一同时穿透三闸的向量。

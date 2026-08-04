@@ -79,6 +79,13 @@ over-defense **0/5** —— 全部来自 **reps=3**，且文档里看不到置�
 或至少在 findings 里标注 reps 数与不确定性 —— stock-agent 已经把这个教训
 吃透了，直接搬过去成本很低。
 
+**第三个独立收敛的项目**：[capsec-strain-invariance](../capsec-strain-invariance/_INDEX.md)
+2026-08-04 的进度更新里，作者自己给 diversion 比值配上了 Wilson 95% CI，结果
+n_adm=1–3 的区间几乎覆盖整个 [0,1]——这是三个项目里第一次有人把「小样本整数结论
+不可信」这句话真的算出区间来验证，而且验证结果比预想的更严重。这套「先配 Wilson
+区间再谈显著性」的具体做法，比「按独立观测数算」更轻量、更适合小 n 场景，
+值得在 avo-redteam 的 reps=3 消融上直接照抄（见其索引对应条目）。
+
 ---
 
 ## 技术文档 · tech/
