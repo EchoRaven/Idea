@@ -57,7 +57,17 @@ final class IdeaSync: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // MARK: 生命周期
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // 单实例：LSUIElement app 没有 Dock 图标，重复双击会静默多开，
+        // 用户只会觉得「点了没反应」。这里直接挡掉并给出提示。
+        if let bid = Bundle.main.bundleIdentifier,
+           NSRunningApplication.runningApplications(withBundleIdentifier: bid).count > 1 {
+            notify("IdeaSync 已在运行", "看菜单栏右上角的灯泡图标 💡")
+            NSApp.terminate(nil)
+            return
+        }
+
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        statusItem.behavior = .removalAllowed     // 允许用户按住 ⌘ 拖动调整位置
         let menu = NSMenu()
         menu.delegate = self
         statusItem.menu = menu
@@ -65,11 +75,12 @@ final class IdeaSync: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard FileManager.default.fileExists(atPath: syncScript) else {
             statusLine = "找不到同步脚本"
             detailLine = syncScript
-            setIcon("exclamationmark.triangle")
+            setIcon("exclamationmark.triangle", label: "脚本缺失")
             return
         }
 
-        setIcon("tray.and.arrow.down")
+        setIcon("lightbulb")
+        notify("IdeaSync 已启动", "菜单栏右上角，每 \(pollMinutes) 分钟自动检查一次")
         refreshAhead()
         startTimer()
         runSync()                       // 启动时先查一次
@@ -81,11 +92,17 @@ final class IdeaSync: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // MARK: 菜单栏图标
 
-    private func setIcon(_ symbol: String) {
+    // 图标旁边始终带一小段文字。纯图标在菜单栏项多的机器上（尤其有刘海的）
+    // 很容易被挤掉或看漏，带文字才找得到。
+    private func setIcon(_ symbol: String, label: String = "Ideas") {
         DispatchQueue.main.async {
+            guard let button = self.statusItem.button else { return }
             let img = NSImage(systemSymbolName: symbol, accessibilityDescription: "IdeaSync")
             img?.isTemplate = true
-            self.statusItem.button?.image = img
+            button.image = img
+            button.imagePosition = .imageLeading
+            button.title = " " + label
+            if img == nil { button.title = " 💡 " + label }   // 符号不可用时的兜底
         }
     }
 
@@ -171,7 +188,8 @@ final class IdeaSync: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 let ok = !out.lowercased().contains("error") && !out.lowercased().contains("rejected")
                 self.statusLine = ok ? "已推送" : "推送失败"
                 self.detailLine = ok ? "" : String(out.prefix(80))
-                self.setIcon(ok ? "checkmark.circle" : "exclamationmark.triangle")
+                self.setIcon(ok ? "checkmark.circle" : "exclamationmark.triangle",
+                             label: ok ? "Ideas" : "推送失败")
                 self.refreshAhead()
                 notify("IdeaSync", self.statusLine)
             }
@@ -235,7 +253,7 @@ final class IdeaSync: NSObject, NSApplicationDelegate, NSMenuDelegate {
         busy = true
         statusLine = "同步中…"
         detailLine = ""
-        setIcon("arrow.triangle.2.circlepath")
+        setIcon("arrow.triangle.2.circlepath", label: "同步中")
 
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/bin/bash")
@@ -276,7 +294,7 @@ final class IdeaSync: NSObject, NSApplicationDelegate, NSMenuDelegate {
         do { try p.run() } catch {
             busy = false
             statusLine = "无法启动同步脚本"
-            setIcon("exclamationmark.triangle")
+            setIcon("exclamationmark.triangle", label: "出错")
         }
     }
 
@@ -295,18 +313,18 @@ final class IdeaSync: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         switch code {
         case "noop":
-            setIcon("tray.and.arrow.down")
+            setIcon("lightbulb")
         case "pushed", "updated":
             setIcon("checkmark.circle")
             notify("IdeaSync", msg)
         case "awaiting":
-            setIcon("exclamationmark.circle")
+            setIcon("exclamationmark.circle", label: "待推送")
             notify("IdeaSync · 等待推送", msg)
         case "error":
-            setIcon("exclamationmark.triangle")
+            setIcon("exclamationmark.triangle", label: "出错")
             notify("IdeaSync · 出错", msg)
         default:
-            setIcon("tray.and.arrow.down")
+            setIcon("lightbulb")
         }
     }
 
