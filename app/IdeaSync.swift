@@ -1,9 +1,14 @@
-// IdeaSync —— Ideas 仓库的菜单栏同步 app
+// IdeaSync —— Ideas 仓库的桌面应用
 //
-// 职责很窄：定时调用 sync/agent-sync.sh，把状态显示在菜单栏，处理推送确认。
-// 所有实际逻辑（git、agent 调用）都在那个 shell 脚本里，改脚本不需要重编译本 app。
+// 三个标签页：
+//   项目 —— 随手记 idea + 每个项目的断点/下一步（回来时不迷路的那两栏）
+//   同步 —— 拉取远端、调 agent 更新索引、推送，带实时日志
+//   设置 —— 自动推送、轮询间隔、开机启动
+//
+// 所有 git 与 agent 逻辑都在 sync/agent-sync.sh 里，改脚本不需要重编译本 app。
 
 import AppKit
+import SwiftUI
 
 // MARK: - 路径
 
@@ -12,27 +17,34 @@ let ideasDir: String = {
     return (NSHomeDirectory() as NSString).appendingPathComponent("Ideas")
 }()
 
-let syncScript = (ideasDir as NSString).appendingPathComponent("sync/agent-sync.sh")
-let confFile   = (ideasDir as NSString).appendingPathComponent("sync/agent.conf")
-let logFile    = (ideasDir as NSString).appendingPathComponent("sync/agent-sync.log")
+func repoPath(_ rel: String) -> String {
+    (ideasDir as NSString).appendingPathComponent(rel)
+}
+
+let syncScript = repoPath("sync/agent-sync.sh")
+let confFile   = repoPath("sync/agent.conf")
+let logFile    = repoPath("sync/agent-sync.log")
+let inboxFile  = repoPath("INBOX.md")
+let projFile   = repoPath("PROJECTS.md")
 let plistPath  = (NSHomeDirectory() as NSString)
     .appendingPathComponent("Library/LaunchAgents/com.thb.ideasync.plist")
 
-// MARK: - 小工具
+// MARK: - shell
 
 @discardableResult
 func shell(_ cmd: String, cwd: String? = nil) -> String {
     let p = Process()
     p.executableURL = URL(fileURLWithPath: "/bin/bash")
     p.arguments = ["-lc", cmd]
-    if let cwd = cwd { p.currentDirectoryURL = URL(fileURLWithPath: cwd) }
+    p.currentDirectoryURL = URL(fileURLWithPath: cwd ?? ideasDir)
     let pipe = Pipe()
     p.standardOutput = pipe
     p.standardError = pipe
     do { try p.run() } catch { return "" }
     let data = pipe.fileHandleForReading.readDataToEndOfFile()
     p.waitUntilExit()
-    return String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    return String(data: data, encoding: .utf8)?
+        .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 }
 
 func notify(_ title: String, _ body: String) {
@@ -40,177 +52,278 @@ func notify(_ title: String, _ body: String) {
     shell("osascript -e \"display notification \\\"\(esc(body))\\\" with title \\\"\(esc(title))\\\"\"")
 }
 
-// MARK: - App
+// MARK: - 数据模型
 
-final class IdeaSync: NSObject, NSApplicationDelegate, NSMenuDelegate {
+struct Project: Identifiable {
+    let id = UUID()
+    var name = ""
+    var badge = ""          // 🔥 / 🌊 / 🧊
+    var oneLiner = ""
+    var breakpoint = ""
+    var nextStep = ""
+    var blocker = ""
+    var updated = ""
+    var indexPath = ""
+}
 
-    private var statusItem: NSStatusItem!
+/// 解析 PROJECTS.md —— 只认 `## <标记> <名字>` 与 `- **字段**：值`（值可跨行缩进续写）
+func parseProjects(_ text: String) -> [Project] {
+    var out: [Project] = []
+    var cur: Project? = nil
+    var field = ""
+
+    func flush() {
+        if let c = cur, !c.name.isEmpty, !c.name.contains("<项目名>") { out.append(c) }
+        cur = nil; field = ""
+    }
+
+    for raw in text.components(separatedBy: .newlines) {
+        if raw.hasPrefix("## ") {
+            flush()
+            var title = String(raw.dropFirst(3)).trimmingCharacters(in: .whitespaces)
+            var badge = ""
+            for mark in ["🔥", "🌊", "🧊"] where title.hasPrefix(mark) {
+                badge = mark
+                title = String(title.dropFirst(mark.count)).trimmingCharacters(in: .whitespaces)
+            }
+            cur = Project(name: title, badge: badge.isEmpty ? "•" : badge)
+            continue
+        }
+        guard cur != nil else { continue }
+
+        if raw.hasPrefix("- **") {
+            let body = String(raw.dropFirst(4))
+            guard let close = body.range(of: "**") else { field = ""; continue }
+            let key = String(body[body.startIndex..<close.lowerBound])
+            var val = String(body[close.upperBound...])
+            for sep in ["：", ":"] where val.hasPrefix(sep) { val = String(val.dropFirst(sep.count)) }
+            val = val.trimmingCharacters(in: .whitespaces)
+            field = key
+            switch key {
+            case "一句话":   cur?.oneLiner = val
+            case "断点":     cur?.breakpoint = val
+            case "下一步":   cur?.nextStep = val
+            case "卡点":     cur?.blocker = val
+            case "更新":     cur?.updated = val
+            case "文档索引":
+                if let l = val.range(of: "]("), let r = val.range(of: ")", range: l.upperBound..<val.endIndex) {
+                    cur?.indexPath = String(val[l.upperBound..<r.lowerBound])
+                }
+            default: break
+            }
+        } else if raw.hasPrefix("  "), !field.isEmpty {
+            let cont = " " + raw.trimmingCharacters(in: .whitespaces)
+            switch field {
+            case "一句话":  cur?.oneLiner += cont
+            case "断点":    cur?.breakpoint += cont
+            case "下一步":  cur?.nextStep += cont
+            case "卡点":    cur?.blocker += cont
+            default: break
+            }
+        } else if raw.trimmingCharacters(in: .whitespaces).isEmpty == false {
+            field = ""
+        }
+    }
+    flush()
+    return out
+}
+
+// MARK: - Store
+
+final class Store: ObservableObject {
+    @Published var projects: [Project] = []
+    @Published var status = "尚未同步"
+    @Published var detail = ""
+    @Published var busy = false
+    @Published var ahead = 0
+    @Published var behind = 0
+    @Published var liveLog = ""
+    @Published var autoPush = false
+    @Published var pollMinutes = 10
+    @Published var launchAtLogin = false
+    @Published var inboxCount = 0
+    @Published var toast = ""
+
     private var timer: Timer?
-    private var running: Process?
+    private var proc: Process?
 
-    private var busy = false
-    private var statusLine = "尚未同步"
-    private var detailLine = ""
-    private var aheadCount = 0
-    private var pollMinutes = 10
-
-    // MARK: 生命周期
-
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        // 单实例：LSUIElement app 没有 Dock 图标，重复双击会静默多开，
-        // 用户只会觉得「点了没反应」。这里直接挡掉并给出提示。
-        if let bid = Bundle.main.bundleIdentifier,
-           NSRunningApplication.runningApplications(withBundleIdentifier: bid).count > 1 {
-            notify("IdeaSync 已在运行", "看菜单栏右上角的灯泡图标 💡")
-            NSApp.terminate(nil)
-            return
-        }
-
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        statusItem.behavior = .removalAllowed     // 允许用户按住 ⌘ 拖动调整位置
-        let menu = NSMenu()
-        menu.delegate = self
-        statusItem.menu = menu
-
-        guard FileManager.default.fileExists(atPath: syncScript) else {
-            statusLine = "找不到同步脚本"
-            detailLine = syncScript
-            setIcon("exclamationmark.triangle", label: "脚本缺失")
-            return
-        }
-
-        setIcon("lightbulb")
-        notify("IdeaSync 已启动", "菜单栏右上角，每 \(pollMinutes) 分钟自动检查一次")
-        refreshAhead()
+    init() {
+        reload()
+        autoPush = readConf("AUTO_PUSH") == "1"
+        launchAtLogin = FileManager.default.fileExists(atPath: plistPath)
         startTimer()
-        runSync()                       // 启动时先查一次
+        sync()
     }
 
-    func applicationWillTerminate(_ notification: Notification) {
-        running?.terminate()
+    // MARK: 读取
+
+    func reload() {
+        if let t = try? String(contentsOfFile: projFile, encoding: .utf8) {
+            projects = parseProjects(t)
+        }
+        if let t = try? String(contentsOfFile: inboxFile, encoding: .utf8) {
+            inboxCount = t.components(separatedBy: .newlines)
+                .filter { $0.hasPrefix("- [ ] ") }.count
+        }
+        refreshCounts()
+        loadLogTail()
     }
 
-    // MARK: 菜单栏图标
+    func refreshCounts() {
+        let a = shell("git rev-list --count @{u}..HEAD 2>/dev/null")
+        let b = shell("git rev-list --count HEAD..@{u} 2>/dev/null")
+        ahead = Int(a) ?? 0
+        behind = Int(b) ?? 0
+    }
 
-    // 图标旁边始终带一小段文字。纯图标在菜单栏项多的机器上（尤其有刘海的）
-    // 很容易被挤掉或看漏，带文字才找得到。
-    private func setIcon(_ symbol: String, label: String = "Ideas") {
-        DispatchQueue.main.async {
-            guard let button = self.statusItem.button else { return }
-            let img = NSImage(systemSymbolName: symbol, accessibilityDescription: "IdeaSync")
-            img?.isTemplate = true
-            button.image = img
-            button.imagePosition = .imageLeading
-            button.title = " " + label
-            if img == nil { button.title = " 💡 " + label }   // 符号不可用时的兜底
+    func loadLogTail() {
+        liveLog = shell("tail -n 60 '\(logFile)' 2>/dev/null")
+    }
+
+    // MARK: 记 idea
+
+    func captureIdea(_ text: String) {
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty else { return }
+        let df = DateFormatter()
+        df.dateFormat = "yyyy-MM-dd"
+        let line = "- [ ] \(df.string(from: Date())) \(t)\n"
+        if let fh = FileHandle(forWritingAtPath: inboxFile) {
+            fh.seekToEndOfFile()
+            fh.write(line.data(using: .utf8)!)
+            fh.closeFile()
+        }
+        inboxCount += 1
+        flash("已记入 INBOX")
+    }
+
+    func flash(_ msg: String) {
+        toast = msg
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+            if self.toast == msg { self.toast = "" }
         }
     }
 
-    // MARK: 菜单
+    // MARK: 同步
 
-    func menuNeedsUpdate(_ menu: NSMenu) {
-        menu.removeAllItems()
-
-        let head = NSMenuItem(title: busy ? "同步中…" : statusLine, action: nil, keyEquivalent: "")
-        head.isEnabled = false
-        menu.addItem(head)
-
-        if !detailLine.isEmpty {
-            let d = NSMenuItem(title: "  " + detailLine, action: nil, keyEquivalent: "")
-            d.isEnabled = false
-            menu.addItem(d)
-        }
-
-        menu.addItem(.separator())
-
-        add(menu, "立即同步", #selector(menuSyncNow), key: "r", enabled: !busy)
-        add(menu, "强制复查（让 agent 重读全部文档）", #selector(menuForce), enabled: !busy)
-
-        if aheadCount > 0 {
-            menu.addItem(.separator())
-            add(menu, "推送 \(aheadCount) 个待确认的提交", #selector(menuPush), enabled: !busy)
-        }
-
-        menu.addItem(.separator())
-
-        let auto = readConf("AUTO_PUSH") == "1"
-        let a = NSMenuItem(title: "agent 改完自动推送", action: #selector(menuToggleAuto), keyEquivalent: "")
-        a.target = self
-        a.state = auto ? .on : .off
-        menu.addItem(a)
-
-        let intervalItem = NSMenuItem(title: "轮询间隔", action: nil, keyEquivalent: "")
-        let sub = NSMenu()
-        for m in [5, 10, 30, 60] {
-            let it = NSMenuItem(title: "\(m) 分钟", action: #selector(menuInterval(_:)), keyEquivalent: "")
-            it.target = self
-            it.tag = m
-            it.state = (m == pollMinutes) ? .on : .off
-            sub.addItem(it)
-        }
-        intervalItem.submenu = sub
-        menu.addItem(intervalItem)
-
-        let login = NSMenuItem(title: "开机自动启动", action: #selector(menuToggleLogin), keyEquivalent: "")
-        login.target = self
-        login.state = FileManager.default.fileExists(atPath: plistPath) ? .on : .off
-        menu.addItem(login)
-
-        menu.addItem(.separator())
-        add(menu, "打开仓库文件夹", #selector(menuOpenRepo))
-        add(menu, "打开 GitHub", #selector(menuOpenGitHub))
-        add(menu, "查看日志", #selector(menuOpenLog))
-        menu.addItem(.separator())
-        add(menu, "退出 IdeaSync", #selector(menuQuit), key: "q")
+    func startTimer() {
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(withTimeInterval: Double(pollMinutes) * 60,
+                                     repeats: true) { [weak self] _ in self?.sync() }
     }
 
-    private func add(_ menu: NSMenu, _ title: String, _ sel: Selector,
-                     key: String = "", enabled: Bool = true) {
-        let it = NSMenuItem(title: title, action: sel, keyEquivalent: key)
-        it.target = self
-        it.isEnabled = enabled
-        menu.addItem(it)
-    }
-
-    // MARK: 菜单动作
-
-    @objc private func menuSyncNow() { runSync() }
-    @objc private func menuForce()   { runSync(force: true) }
-    @objc private func menuQuit()    { NSApp.terminate(nil) }
-
-    @objc private func menuPush() {
+    func sync(force: Bool = false) {
+        guard !busy else { return }
         busy = true
-        setIcon("arrow.triangle.2.circlepath")
+        status = "同步中…"
+        detail = ""
+
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/bin/bash")
+        p.arguments = force ? [syncScript, "--force"] : [syncScript]
+        p.currentDirectoryURL = URL(fileURLWithPath: ideasDir)
+        let pipe = Pipe()
+        p.standardOutput = pipe
+        p.standardError = pipe
+        proc = p
+
+        var buf = ""
+        var result = ""
+        pipe.fileHandleForReading.readabilityHandler = { [weak self] fh in
+            guard let s = String(data: fh.availableData, encoding: .utf8), !s.isEmpty else { return }
+            buf += s
+            let lines = buf.components(separatedBy: "\n")
+            for line in lines {
+                if line.hasPrefix("STATUS: ") {
+                    let v = String(line.dropFirst(8))
+                    DispatchQueue.main.async {
+                        self?.status = v
+                        self?.liveLog += "\n" + v
+                    }
+                } else if line.hasPrefix("RESULT: ") {
+                    result = String(line.dropFirst(8))
+                }
+            }
+            buf = lines.last ?? ""
+        }
+
+        // 15 分钟保险丝，防止 agent 卡死
+        let fuse = DispatchWorkItem { if p.isRunning { p.terminate() } }
+        DispatchQueue.global().asyncAfter(deadline: .now() + 900, execute: fuse)
+
+        p.terminationHandler = { [weak self] _ in
+            fuse.cancel()
+            pipe.fileHandleForReading.readabilityHandler = nil
+            DispatchQueue.main.async { self?.finish(result) }
+        }
+        do { try p.run() } catch {
+            busy = false
+            status = "无法启动同步脚本"
+        }
+    }
+
+    private func finish(_ result: String) {
+        busy = false
+        proc = nil
+        let parts = result.components(separatedBy: "|")
+        let code = parts.first ?? "error"
+        status = parts.count > 1 ? parts[1] : "未知结果"
+        let df = DateFormatter(); df.dateFormat = "HH:mm"
+        detail = "上次同步 " + df.string(from: Date())
+        reload()
+        if code == "pushed" || code == "updated" || code == "awaiting" || code == "error" {
+            notify("IdeaSync", status)
+        }
+    }
+
+    func push() {
+        guard !busy else { return }
+        busy = true
+        status = "推送中…"
         DispatchQueue.global().async {
-            let out = shell("git push 2>&1", cwd: ideasDir)
+            let out = shell("git push 2>&1")
             DispatchQueue.main.async {
                 self.busy = false
-                let ok = !out.lowercased().contains("error") && !out.lowercased().contains("rejected")
-                self.statusLine = ok ? "已推送" : "推送失败"
-                self.detailLine = ok ? "" : String(out.prefix(80))
-                self.setIcon(ok ? "checkmark.circle" : "exclamationmark.triangle",
-                             label: ok ? "Ideas" : "推送失败")
-                self.refreshAhead()
-                notify("IdeaSync", self.statusLine)
+                let ok = !out.lowercased().contains("error")
+                    && !out.lowercased().contains("rejected")
+                    && !out.lowercased().contains("denied")
+                self.status = ok ? "已推送" : "推送失败"
+                self.detail = ok ? "" : String(out.prefix(120))
+                self.liveLog += "\n$ git push\n" + out
+                self.refreshCounts()
+                notify("IdeaSync", self.status)
             }
         }
     }
 
-    @objc private func menuToggleAuto() {
-        writeConf("AUTO_PUSH", readConf("AUTO_PUSH") == "1" ? "0" : "1")
+    // MARK: 配置
+
+    func readConf(_ key: String) -> String {
+        guard let t = try? String(contentsOfFile: confFile, encoding: .utf8) else { return "" }
+        for line in t.components(separatedBy: .newlines) {
+            let s = line.trimmingCharacters(in: .whitespaces)
+            if s.hasPrefix("\(key)=") {
+                return String(s.dropFirst(key.count + 1))
+                    .trimmingCharacters(in: CharacterSet(charactersIn: "\"' "))
+            }
+        }
+        return ""
     }
 
-    @objc private func menuInterval(_ sender: NSMenuItem) {
-        pollMinutes = sender.tag
-        startTimer()
+    func writeConf(_ key: String, _ value: String) {
+        guard let t = try? String(contentsOfFile: confFile, encoding: .utf8) else { return }
+        var lines = t.components(separatedBy: .newlines)
+        var found = false
+        for i in lines.indices where lines[i].trimmingCharacters(in: .whitespaces).hasPrefix("\(key)=") {
+            lines[i] = "\(key)=\(value)"; found = true
+        }
+        if !found { lines.append("\(key)=\(value)") }
+        try? lines.joined(separator: "\n").write(toFile: confFile, atomically: true, encoding: .utf8)
     }
 
-    @objc private func menuToggleLogin() {
+    func setLaunchAtLogin(_ on: Bool) {
         let fm = FileManager.default
-        if fm.fileExists(atPath: plistPath) {
-            try? fm.removeItem(atPath: plistPath)
-            shell("launchctl unload \(plistPath) 2>/dev/null")
-        } else {
+        if on {
             let exe = Bundle.main.executablePath ?? ""
             let plist = """
             <?xml version="1.0" encoding="UTF-8"?>
@@ -225,150 +338,295 @@ final class IdeaSync: NSObject, NSApplicationDelegate, NSMenuDelegate {
             try? fm.createDirectory(atPath: (plistPath as NSString).deletingLastPathComponent,
                                     withIntermediateDirectories: true)
             try? plist.write(toFile: plistPath, atomically: true, encoding: .utf8)
-            shell("launchctl load \(plistPath) 2>/dev/null")
+            shell("launchctl load '\(plistPath)' 2>/dev/null")
+        } else {
+            shell("launchctl unload '\(plistPath)' 2>/dev/null")
+            try? fm.removeItem(atPath: plistPath)
+        }
+        launchAtLogin = fm.fileExists(atPath: plistPath)
+    }
+}
+
+// MARK: - 视图
+
+struct RootView: View {
+    @EnvironmentObject var s: Store
+    @State private var tab = 0
+
+    var body: some View {
+        VStack(spacing: 0) {
+            TopBar()
+            Divider()
+            TabView(selection: $tab) {
+                ProjectsTab().tabItem { Label("项目", systemImage: "square.stack") }.tag(0)
+                SyncTab().tabItem { Label("同步", systemImage: "arrow.triangle.2.circlepath") }.tag(1)
+                SettingsTab().tabItem { Label("设置", systemImage: "gearshape") }.tag(2)
+            }
+            .padding(.top, 6)
+        }
+        .frame(minWidth: 820, minHeight: 620)
+        .overlay(alignment: .bottom) {
+            if !s.toast.isEmpty {
+                Text(s.toast)
+                    .font(.callout).padding(.horizontal, 14).padding(.vertical, 8)
+                    .background(.thickMaterial, in: Capsule())
+                    .padding(.bottom, 16).transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: s.toast)
+    }
+}
+
+/// 顶部：随手记 idea + 同步状态
+struct TopBar: View {
+    @EnvironmentObject var s: Store
+    @State private var draft = ""
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "lightbulb.fill").foregroundStyle(.yellow)
+            TextField("随手记一个 idea，回车存入 INBOX（不打断你手上的事）", text: $draft)
+                .textFieldStyle(.roundedBorder)
+                .focused($focused)
+                .onSubmit { s.captureIdea(draft); draft = "" }
+            Button("记下") { s.captureIdea(draft); draft = "" }
+                .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty)
+
+            Divider().frame(height: 22)
+
+            HStack(spacing: 6) {
+                Circle().frame(width: 8, height: 8)
+                    .foregroundStyle(s.busy ? .orange : (s.ahead > 0 || s.behind > 0 ? .blue : .green))
+                Text(s.busy ? "同步中…" : s.status).font(.callout).lineLimit(1)
+            }
+            .frame(minWidth: 180, alignment: .leading)
+
+            Button { s.sync() } label: { Image(systemName: "arrow.clockwise") }
+                .disabled(s.busy).help("立即同步")
+        }
+        .padding(.horizontal, 16).padding(.vertical, 10)
+    }
+}
+
+struct ProjectsTab: View {
+    @EnvironmentObject var s: Store
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    Text("进行中的项目").font(.title3).bold()
+                    Text("\(s.projects.count) 个").foregroundStyle(.secondary)
+                    if s.projects.count > 3 {
+                        Label("超过 3 个了，考虑挪一个进 SOMEDAY", systemImage: "exclamationmark.triangle")
+                            .font(.caption).foregroundStyle(.orange)
+                    }
+                    Spacer()
+                    Label("INBOX 待分流 \(s.inboxCount)", systemImage: "tray")
+                        .font(.caption).foregroundStyle(s.inboxCount > 0 ? .orange : .secondary)
+                    Button("打开仓库") {
+                        NSWorkspace.shared.open(URL(fileURLWithPath: ideasDir))
+                    }.controlSize(.small)
+                }
+
+                if s.projects.isEmpty {
+                    Text("没解析到项目。检查 PROJECTS.md 里是否有 `## 🔥 项目名` 这样的标题。")
+                        .foregroundStyle(.secondary).padding(.vertical, 30)
+                }
+
+                ForEach(s.projects) { p in ProjectCard(p: p) }
+            }
+            .padding(20)
         }
     }
+}
 
-    @objc private func menuOpenRepo()   { NSWorkspace.shared.open(URL(fileURLWithPath: ideasDir)) }
-    @objc private func menuOpenLog()    { NSWorkspace.shared.open(URL(fileURLWithPath: logFile)) }
-    @objc private func menuOpenGitHub() {
-        var url = shell("git remote get-url origin", cwd: ideasDir)
-        url = url.replacingOccurrences(of: "git@github.com:", with: "https://github.com/")
-                 .replacingOccurrences(of: ".git", with: "")
-        if let u = URL(string: url) { NSWorkspace.shared.open(u) }
-    }
+struct ProjectCard: View {
+    let p: Project
 
-    // MARK: 同步
-
-    private func startTimer() {
-        timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: Double(pollMinutes) * 60,
-                                     repeats: true) { [weak self] _ in
-            self?.runSync()
-        }
-    }
-
-    private func runSync(force: Bool = false) {
-        guard !busy else { return }
-        busy = true
-        statusLine = "同步中…"
-        detailLine = ""
-        setIcon("arrow.triangle.2.circlepath", label: "同步中")
-
-        let p = Process()
-        p.executableURL = URL(fileURLWithPath: "/bin/bash")
-        p.arguments = force ? [syncScript, "--force"] : [syncScript]
-        p.currentDirectoryURL = URL(fileURLWithPath: ideasDir)
-        let pipe = Pipe()
-        p.standardOutput = pipe
-        p.standardError = pipe
-        running = p
-
-        // 边跑边把 STATUS 行显示出来
-        var buffer = ""
-        var result = ""
-        pipe.fileHandleForReading.readabilityHandler = { [weak self] fh in
-            guard let text = String(data: fh.availableData, encoding: .utf8), !text.isEmpty else { return }
-            buffer += text
-            for line in buffer.components(separatedBy: "\n") {
-                if line.hasPrefix("STATUS: ") {
-                    let s = String(line.dropFirst(8))
-                    DispatchQueue.main.async { self?.statusLine = s }
-                } else if line.hasPrefix("RESULT: ") {
-                    result = String(line.dropFirst(8))
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(p.badge)
+                Text(p.name).font(.headline)
+                Spacer()
+                if !p.updated.isEmpty {
+                    Text(p.updated).font(.caption).foregroundStyle(.secondary)
+                }
+                if !p.indexPath.isEmpty {
+                    Button("文档索引") {
+                        NSWorkspace.shared.open(URL(fileURLWithPath: repoPath(p.indexPath)))
+                    }.controlSize(.small)
                 }
             }
-            if let last = buffer.components(separatedBy: "\n").last { buffer = last }
+            if !p.oneLiner.isEmpty {
+                Text(p.oneLiner).font(.callout).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if !p.breakpoint.isEmpty { Field("断点", p.breakpoint, "bookmark", .blue) }
+            if !p.nextStep.isEmpty   { Field("下一步", p.nextStep, "arrow.right.circle", .green) }
+            if !p.blocker.isEmpty    { Field("卡点", p.blocker, "exclamationmark.octagon", .orange) }
         }
-
-        // 15 分钟保险丝，防止 agent 卡死
-        let fuse = DispatchWorkItem { if p.isRunning { p.terminate() } }
-        DispatchQueue.global().asyncAfter(deadline: .now() + 900, execute: fuse)
-
-        p.terminationHandler = { [weak self] _ in
-            fuse.cancel()
-            pipe.fileHandleForReading.readabilityHandler = nil
-            DispatchQueue.main.async { self?.finish(result) }
-        }
-
-        do { try p.run() } catch {
-            busy = false
-            statusLine = "无法启动同步脚本"
-            setIcon("exclamationmark.triangle", label: "出错")
-        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.quaternary.opacity(0.25), in: RoundedRectangle(cornerRadius: 10))
     }
 
-    private func finish(_ result: String) {
-        busy = false
-        running = nil
-        refreshAhead()
-
-        let parts = result.components(separatedBy: "|")
-        let code = parts.first ?? "error"
-        let msg  = parts.count > 1 ? parts[1] : "未知结果"
-
-        statusLine = msg
-        detailLine = "上次同步 " + DateFormatter.localizedString(
-            from: Date(), dateStyle: .none, timeStyle: .short)
-
-        switch code {
-        case "noop":
-            setIcon("lightbulb")
-        case "pushed", "updated":
-            setIcon("checkmark.circle")
-            notify("IdeaSync", msg)
-        case "awaiting":
-            setIcon("exclamationmark.circle", label: "待推送")
-            notify("IdeaSync · 等待推送", msg)
-        case "error":
-            setIcon("exclamationmark.triangle", label: "出错")
-            notify("IdeaSync · 出错", msg)
-        default:
-            setIcon("lightbulb")
-        }
-    }
-
-    private func refreshAhead() {
-        DispatchQueue.global().async {
-            let n = shell("git rev-list --count @{u}..HEAD 2>/dev/null", cwd: ideasDir)
-            DispatchQueue.main.async { self.aheadCount = Int(n) ?? 0 }
-        }
-    }
-
-    // MARK: 配置读写
-
-    private func readConf(_ key: String) -> String {
-        guard let text = try? String(contentsOfFile: confFile, encoding: .utf8) else { return "" }
-        for line in text.components(separatedBy: .newlines) {
-            let t = line.trimmingCharacters(in: .whitespaces)
-            if t.hasPrefix("\(key)=") {
-                return String(t.dropFirst(key.count + 1))
-                    .trimmingCharacters(in: CharacterSet(charactersIn: "\"' "))
+    @ViewBuilder
+    private func Field(_ label: String, _ value: String, _ icon: String, _ color: Color) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: icon).foregroundStyle(color).frame(width: 16)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label).font(.caption).bold().foregroundStyle(color)
+                Text(value).font(.callout).textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
-        return ""
     }
+}
 
-    private func writeConf(_ key: String, _ value: String) {
-        guard var text = try? String(contentsOfFile: confFile, encoding: .utf8) else { return }
-        var lines = text.components(separatedBy: .newlines)
-        var found = false
-        for i in lines.indices {
-            if lines[i].trimmingCharacters(in: .whitespaces).hasPrefix("\(key)=") {
-                lines[i] = "\(key)=\(value)"
-                found = true
+struct SyncTab: View {
+    @EnvironmentObject var s: Store
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 20) {
+                Stat("待推送", s.ahead, s.ahead > 0 ? .orange : .secondary)
+                Stat("待拉取", s.behind, s.behind > 0 ? .blue : .secondary)
+                Spacer()
+            }
+
+            HStack(spacing: 10) {
+                Button { s.sync() } label: { Label("立即同步", systemImage: "arrow.clockwise") }
+                    .disabled(s.busy)
+                Button { s.sync(force: true) } label: {
+                    Label("强制复查", systemImage: "arrow.triangle.2.circlepath")
+                }
+                .disabled(s.busy).help("即使没有新提交，也让 agent 重读全部文档")
+                Button { s.push() } label: {
+                    Label("推送 \(s.ahead) 个提交", systemImage: "arrow.up.circle")
+                }
+                .disabled(s.busy || s.ahead == 0)
+                Spacer()
+                Button("在 GitHub 打开") {
+                    var u = shell("git remote get-url origin")
+                    u = u.replacingOccurrences(of: "git@github.com:", with: "https://github.com/")
+                         .replacingOccurrences(of: ".git", with: "")
+                    if let url = URL(string: u) { NSWorkspace.shared.open(url) }
+                }.controlSize(.small)
+            }
+
+            if !s.detail.isEmpty {
+                Text(s.detail).font(.caption).foregroundStyle(.secondary)
+            }
+
+            Text("日志").font(.headline)
+            ScrollView {
+                Text(s.liveLog.isEmpty ? "（暂无）" : s.liveLog)
+                    .font(.system(.caption, design: .monospaced))
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(10)
+            }
+            .background(.quaternary.opacity(0.2), in: RoundedRectangle(cornerRadius: 8))
+
+            HStack {
+                Button("刷新日志") { s.loadLogTail() }.controlSize(.small)
+                Button("打开完整日志") {
+                    NSWorkspace.shared.open(URL(fileURLWithPath: logFile))
+                }.controlSize(.small)
             }
         }
-        if !found { lines.append("\(key)=\(value)") }
-        text = lines.joined(separator: "\n")
-        try? text.write(toFile: confFile, atomically: true, encoding: .utf8)
+        .padding(20)
+    }
+
+    @ViewBuilder
+    private func Stat(_ label: String, _ n: Int, _ color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("\(n)").font(.system(size: 28, weight: .semibold)).foregroundStyle(color)
+            Text(label).font(.caption).foregroundStyle(.secondary)
+        }
+    }
+}
+
+struct SettingsTab: View {
+    @EnvironmentObject var s: Store
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("agent 改完索引后自动推送到 GitHub", isOn: Binding(
+                    get: { s.autoPush },
+                    set: { s.autoPush = $0; s.writeConf("AUTO_PUSH", $0 ? "1" : "0") }))
+                Text("关闭时 agent 只在本地提交，等你在「同步」页点推送。")
+                    .font(.caption).foregroundStyle(.secondary)
+
+                Picker("轮询间隔", selection: Binding(
+                    get: { s.pollMinutes },
+                    set: { s.pollMinutes = $0; s.startTimer() })) {
+                    ForEach([5, 10, 30, 60], id: \.self) { Text("\($0) 分钟").tag($0) }
+                }
+                .pickerStyle(.segmented).frame(maxWidth: 320)
+
+                Toggle("开机自动启动", isOn: Binding(
+                    get: { s.launchAtLogin },
+                    set: { s.setLaunchAtLogin($0) }))
+            } header: { Text("同步").font(.headline) }
+
+            Section {
+                LabeledContent("仓库") { Text(ideasDir).textSelection(.enabled) }
+                LabeledContent("远端") { Text(shell("git remote get-url origin")).textSelection(.enabled) }
+                LabeledContent("分支") { Text(shell("git rev-parse --abbrev-ref HEAD")) }
+                HStack {
+                    Button("打开仓库文件夹") { NSWorkspace.shared.open(URL(fileURLWithPath: ideasDir)) }
+                    Button("编辑 PROJECTS.md") { NSWorkspace.shared.open(URL(fileURLWithPath: projFile)) }
+                    Button("编辑 INBOX.md") { NSWorkspace.shared.open(URL(fileURLWithPath: inboxFile)) }
+                }
+            } header: { Text("仓库").font(.headline) }
+        }
+        .formStyle(.grouped)
+        .padding(4)
     }
 }
 
 // MARK: - 启动
 
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    var window: NSWindow!
+    let store = Store()
+
+    func applicationDidFinishLaunching(_ n: Notification) {
+        // 单实例：重复启动时把已有窗口带到前面，而不是静默多开
+        if let bid = Bundle.main.bundleIdentifier,
+           NSRunningApplication.runningApplications(withBundleIdentifier: bid).count > 1 {
+            NSApp.terminate(nil); return
+        }
+
+        window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 900, height: 680),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered, defer: false)
+        window.title = "IdeaSync"
+        window.center()
+        window.setFrameAutosaveName("IdeaSyncMain")
+        window.contentViewController =
+            NSHostingController(rootView: RootView().environmentObject(store))
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    // 点 Dock 图标时重新打开窗口
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag { window?.makeKeyAndOrderFront(nil) }
+        return true
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ app: NSApplication) -> Bool { false }
+}
+
 let app = NSApplication.shared
-let delegate = IdeaSync()
+let delegate = AppDelegate()
 app.delegate = delegate
-app.setActivationPolicy(.accessory)     // 只在菜单栏，不占 Dock
+app.setActivationPolicy(.regular)      // 正常应用：有 Dock 图标、有窗口
 app.run()

@@ -15,7 +15,7 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 swiftc -O IdeaSync.swift -o "$APP/Contents/MacOS/IdeaSync" \
-  -framework AppKit -target arm64-apple-macos13.0
+  -framework AppKit -framework SwiftUI -target arm64-apple-macos14.0
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -29,8 +29,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleShortVersionString</key><string>1.0</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleExecutable</key><string>IdeaSync</string>
-  <key>LSMinimumSystemVersion</key><string>13.0</string>
-  <key>LSUIElement</key><true/>
+  <key>LSMinimumSystemVersion</key><string>14.0</string>
+  <key>NSHighResolutionCapable</key><true/>
 </dict>
 </plist>
 PLIST
@@ -48,5 +48,5 @@ if [ "${1:-}" = "--install" ]; then
   cp -R "$APP" "$DEST/"
   echo "✓ 已安装到 $DEST/$APP"
   open "$DEST/$APP"
-  echo "✓ 已启动 —— 看菜单栏右上角的托盘图标"
+  echo "✓ 已启动 —— 窗口应该已经打开，Dock 里也有图标"
 fi
