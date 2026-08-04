@@ -54,6 +54,13 @@ func notify(_ title: String, _ body: String) {
 
 // MARK: - 数据模型
 
+struct InboxItem: Identifiable {
+    let id = UUID()
+    var date = ""
+    var text = ""
+    var raw = ""            // 原始整行，删除时按它精确匹配
+}
+
 struct Project: Identifiable {
     let id = UUID()
     var name = ""
@@ -141,8 +148,10 @@ final class Store: ObservableObject {
     @Published var autoPush = false
     @Published var pollMinutes = 10
     @Published var launchAtLogin = false
-    @Published var inboxCount = 0
+    @Published var inboxItems: [InboxItem] = []
     @Published var toast = ""
+
+    var inboxCount: Int { inboxItems.count }
 
     private var timer: Timer?
     private var proc: Process?
@@ -161,12 +170,53 @@ final class Store: ObservableObject {
         if let t = try? String(contentsOfFile: projFile, encoding: .utf8) {
             projects = parseProjects(t)
         }
-        if let t = try? String(contentsOfFile: inboxFile, encoding: .utf8) {
-            inboxCount = t.components(separatedBy: .newlines)
-                .filter { $0.hasPrefix("- [ ] ") }.count
-        }
+        loadInbox()
         refreshCounts()
         loadLogTail()
+    }
+
+    func loadInbox() {
+        guard let t = try? String(contentsOfFile: inboxFile, encoding: .utf8) else {
+            inboxItems = []; return
+        }
+        inboxItems = t.components(separatedBy: .newlines)
+            .filter { $0.hasPrefix("- [ ] ") }
+            .map { line -> InboxItem in
+                var body = String(line.dropFirst(6))
+                var date = ""
+                // 行首若是 YYYY-MM-DD 就单独拆出来显示
+                if body.count > 10 {
+                    let head = String(body.prefix(10))
+                    if head.count == 10, head.filter({ $0 == "-" }).count == 2,
+                       head.allSatisfy({ $0.isNumber || $0 == "-" }) {
+                        date = head
+                        body = String(body.dropFirst(10)).trimmingCharacters(in: .whitespaces)
+                    }
+                }
+                return InboxItem(date: date, text: body, raw: line)
+            }
+    }
+
+    /// 从 INBOX.md 删掉一行；moveTo 非空时先把它追加到那个文件
+    func removeFromInbox(_ item: InboxItem, moveTo: String? = nil) {
+        guard let t = try? String(contentsOfFile: inboxFile, encoding: .utf8) else { return }
+        var kept: [String] = []
+        var removed = false
+        for line in t.components(separatedBy: .newlines) {
+            if !removed && line == item.raw { removed = true; continue }
+            kept.append(line)
+        }
+        guard removed else { flash("没找到这一条，可能已被手工改过"); return }
+
+        if let dest = moveTo,
+           var d = try? String(contentsOfFile: dest, encoding: .utf8) {
+            if !d.hasSuffix("\n") { d += "\n" }
+            d += "- \(item.date) \(item.text)\n"
+            try? d.write(toFile: dest, atomically: true, encoding: .utf8)
+        }
+        try? kept.joined(separator: "\n").write(toFile: inboxFile, atomically: true, encoding: .utf8)
+        loadInbox()
+        flash(moveTo == nil ? "已删除" : "已移入 SOMEDAY")
     }
 
     func refreshCounts() {
@@ -182,19 +232,30 @@ final class Store: ObservableObject {
 
     // MARK: 记 idea
 
+    /// 追加一条到 INBOX.md。写失败必须明确报错 —— 之前这里静默失败还报「成功」，是个坑。
     func captureIdea(_ text: String) {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !t.isEmpty else { return }
         let df = DateFormatter()
         df.dateFormat = "yyyy-MM-dd"
         let line = "- [ ] \(df.string(from: Date())) \(t)\n"
-        if let fh = FileHandle(forWritingAtPath: inboxFile) {
-            fh.seekToEndOfFile()
-            fh.write(line.data(using: .utf8)!)
-            fh.closeFile()
+
+        guard let fh = FileHandle(forWritingAtPath: inboxFile) else {
+            flash("写入失败：打不开 \(inboxFile)")
+            return
         }
-        inboxCount += 1
-        flash("已记入 INBOX")
+        fh.seekToEndOfFile()
+        guard let data = line.data(using: .utf8) else { fh.closeFile(); flash("写入失败：编码错误"); return }
+        fh.write(data)
+        fh.closeFile()
+
+        let before = inboxItems.count
+        loadInbox()
+        if inboxItems.count > before {
+            flash("已记入 INBOX（第 \(inboxItems.count) 条）")
+        } else {
+            flash("写入了但没读回来，检查 INBOX.md 格式")
+        }
     }
 
     func flash(_ msg: String) {
@@ -358,9 +419,12 @@ struct RootView: View {
             TopBar()
             Divider()
             TabView(selection: $tab) {
-                ProjectsTab().tabItem { Label("项目", systemImage: "square.stack") }.tag(0)
-                SyncTab().tabItem { Label("同步", systemImage: "arrow.triangle.2.circlepath") }.tag(1)
-                SettingsTab().tabItem { Label("设置", systemImage: "gearshape") }.tag(2)
+                InboxTab()
+                    .tabItem { Label(s.inboxCount > 0 ? "INBOX (\(s.inboxCount))" : "INBOX",
+                                     systemImage: "tray") }.tag(0)
+                ProjectsTab().tabItem { Label("项目", systemImage: "square.stack") }.tag(1)
+                SyncTab().tabItem { Label("同步", systemImage: "arrow.triangle.2.circlepath") }.tag(2)
+                SettingsTab().tabItem { Label("设置", systemImage: "gearshape") }.tag(3)
             }
             .padding(.top, 6)
         }
@@ -393,6 +457,12 @@ struct TopBar: View {
             Button("记下") { s.captureIdea(draft); draft = "" }
                 .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty)
 
+            // 常驻计数：记完立刻看到数字 +1，比一闪而过的提示可靠
+            Label("\(s.inboxCount)", systemImage: "tray.fill")
+                .font(.callout)
+                .foregroundStyle(s.inboxCount > 0 ? .orange : .secondary)
+                .help("INBOX 待分流条数")
+
             Divider().frame(height: 22)
 
             HStack(spacing: 6) {
@@ -406,6 +476,67 @@ struct TopBar: View {
                 .disabled(s.busy).help("立即同步")
         }
         .padding(.horizontal, 16).padding(.vertical, 10)
+    }
+}
+
+struct InboxTab: View {
+    @EnvironmentObject var s: Store
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text("待分流").font(.title3).bold()
+                Text("\(s.inboxCount) 条").foregroundStyle(.secondary)
+                Spacer()
+                Button("刷新") { s.loadInbox() }.controlSize(.small)
+                Button("用编辑器打开") {
+                    NSWorkspace.shared.open(URL(fileURLWithPath: inboxFile))
+                }.controlSize(.small)
+            }
+            .padding(.horizontal, 20).padding(.top, 16).padding(.bottom, 10)
+
+            if s.inboxItems.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "checkmark.circle").font(.largeTitle).foregroundStyle(.green)
+                    Text("INBOX 是空的").font(.headline)
+                    Text("在上面的输入框记想法，会出现在这里。").foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    VStack(spacing: 10) {
+                        ForEach(s.inboxItems) { item in
+                            HStack(alignment: .top, spacing: 12) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    if !item.date.isEmpty {
+                                        Text(item.date).font(.caption).foregroundStyle(.secondary)
+                                    }
+                                    Text(item.text).font(.callout).textSelection(.enabled)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                Spacer(minLength: 8)
+                                VStack(spacing: 6) {
+                                    Button("移入 SOMEDAY") {
+                                        s.removeFromInbox(item, moveTo: repoPath("SOMEDAY.md"))
+                                    }.controlSize(.small)
+                                    Button("删除") { s.removeFromInbox(item) }
+                                        .controlSize(.small)
+                                }
+                            }
+                            .padding(14)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(.quaternary.opacity(0.25),
+                                        in: RoundedRectangle(cornerRadius: 10))
+                        }
+                    }
+                    .padding(.horizontal, 20).padding(.bottom, 20)
+                }
+
+                Text("分流规则：现在就做 → 写进 PROJECTS.md；以后可能做 → 移入 SOMEDAY；两分钟能做完 → 直接做掉；其余删掉。别让它过夜到第二周。")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .padding(.horizontal, 20).padding(.bottom, 14)
+            }
+        }
     }
 }
 
