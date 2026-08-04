@@ -78,9 +78,11 @@ BEFORE="$(git rev-parse HEAD)"
 UPSTREAM="$(git rev-parse '@{u}' 2>/dev/null)" || die "当前分支没有上游分支"
 
 if [ "$CHECK_ONLY" = "1" ]; then
-  [ "$BEFORE" = "$UPSTREAM" ] && done_ noop "已是最新"
-  n="$(git rev-list --count HEAD..'@{u}')"
-  done_ remote "远端有 $n 个新提交"
+  n="$(git rev-list --count HEAD..'@{u}' 2>/dev/null || echo 0)"
+  a="$(git rev-list --count '@{u}'..HEAD 2>/dev/null || echo 0)"
+  [ "$n" -gt 0 ] && done_ remote "远端有 $n 个新提交"
+  [ "$a" -gt 0 ] && done_ awaiting "本地有 $a 个提交未推送"
+  done_ noop "已是最新"
 fi
 
 # ---- 拉取 ----
