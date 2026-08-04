@@ -35,6 +35,12 @@ that must be confirmed in Tier-2 before it counts. This guardrail is wired into 
 
 Factors, tasks, and attacker guidance each have **three authoring paths**: manual / semi-auto / auto.
 
+> **Scope caveat (do not overstate externally):** the loop currently closes only through the **local
+> stand-in `task_from_spec`**, which is validated *mechanically* (generated tasks load / compile / seed
+> cleanly). It is **not yet wired to the real `redteam-data-synth` pipeline**, and no generated task +
+> generated skill has yet been *run* end-to-end against a victim. So "closed loop" = closed on the local
+> stand-in; the real-pipeline leg and the generated-artifact Tier-2 run are still open. See 02-progress.
+
 ## Documents
 
 | file | contents |
