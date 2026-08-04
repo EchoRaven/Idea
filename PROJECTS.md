@@ -16,15 +16,15 @@
 - **一句话**：验证 agent 攻击易感性是否由「相对能力强度」(任务离模型能力上限多近)决定,而非绝对能力 —— 若成立则「能力进步不买安全」
 - **仓库**：`rtg-capsec`(生成) + `dtap-capsec`(测量)　**分支**：`capsec/env-state-judges` / `capsec/measurement-layer`　（推到 remote `vaibackup`）
 - **技术栈**：env-state 三值判定 + depth 依赖链(strain 轴) + 固定注入 + deepseek judge + super_nova/Gemini victim
-- **断点**：整条测量流水线打通并出了 60 个真 run。关键发现 = 易感性强 **shape-依赖**:content_assertion(诽谤)会转化(diversion 0.33–1.0),exfil/UA(需要显式有害动作)全 0。invariance 本身还没测出 —— 语料 n=1–3 太小 + 能力梯度太窄(免费 Google key 只有 flash 层,pro 是 429 limit:0)
-- **下一步**：拿到付费 Google 配额后 —— (1) 把 content 语料每 cell 扩到 ~10 条(纯 LLM 生成,不占 docker);(2) 跑 flash→pro 全能力梯度的 content sweep;(3) `analyze_strain.py --plot` 出两张判据图:diversion-vs-绝对depth(应按能力分离)vs diversion-vs-相对strain(应塌缩=invariance)
-- **卡点**：需要付费 Google billing 开 `gemini-2.5-pro`/`gemini-3-pro-preview`(免费 key 429 `limit:0`);统计 power 不足
+- **断点**：整条测量流水线打通并出了 60 个真 run(super_nova 3-shape 全 sweep + 两档 Gemini flash 的 content sweep)。关键发现 = 易感性强 **shape-依赖**:content_assertion(诽谤)会转化(diversion 0.33–1.0),exfil/UA(需要显式有害动作)全 0 —— 但 exfil/UA 那个「全 0」目前没配 n_admissible,证据强度还没核实(详见项目索引「需要你注意的」#1)。invariance 本身还没测出 —— 语料 n=1–3 太小 + 能力梯度太窄(免费 Google key 只有 flash 层,pro 是 429 limit:0)
+- **下一步**：① 先把 exfil/UA 的 n_admissible 摆出来,核实「全 0」是稳定拒绝还是样本太小(不需要等付费 key,现有 60 runs 的结果就能查);② 拿到付费 Google 配额后,把 content 语料每 cell 扩到 ~10 条(纯 LLM 生成,不占 docker)并跑 flash→pro 全能力梯度的 content sweep;③ `analyze_strain.py --plot` 出两张判据图:diversion-vs-绝对depth(应按能力分离)vs diversion-vs-相对strain(应塌缩=invariance)
+- **卡点**：需要付费 Google billing 开 `gemini-2.5-pro`/`gemini-3-pro-preview`(免费 key 429 `limit:0`);统计 power 不足;另外 `rtg-capsec` 分支目前只推到备份 remote `vaibackup`,canonical origin(`Virtue-AI`)缺 `id_ed25519_virtueai` key,是一个没写进待办的访问单点
 - **更新**：2026-08-04
-- **文档索引**：[projects/capsec/_INDEX.md](projects/capsec/_INDEX.md)
+- **文档索引**：[projects/capsec-strain-invariance/_INDEX.md](projects/capsec-strain-invariance/_INDEX.md)
 
 <details><summary>笔记 / 决策记录</summary>
 
-- 2026-08-04 —— 流水线打通,super_nova 3-shape + Gemini flash 多victim 60 runs。判官 gpt-5.4→deepseek(emitted judge 从 canonical dt_arena 符号链接导入,坑了很久)。Gemini 走 Google 原生 OpenAI-compat 才能多步 tool-loop(Meta gateway 掉 thought_signature)。invariance 卡在能力梯度太窄 + n 太小。
+- 2026-08-04 —— 流水线打通,super_nova 3-shape + Gemini flash 多victim 60 runs。判官 gpt-5.4→deepseek(emitted judge 从 canonical dt_arena 符号链接导入,坑了很久)。Gemini 走 Google 原生 OpenAI-compat 才能多步 tool-loop(Meta gateway 掉 thought_signature)。invariance 卡在能力梯度太窄 + n 太小 —— 这和 avo-redteam 的 reps=3、stock-agent 早前踩过的「按行数算显著性」是同一类小样本坑。content_assertion 易感、exfil/UA 不易感,这个 shape 分化和 avo-redteam「诽谤记录归档转述是唯一防御盲区」的结果互相印证,是从生成侧独立复现的同一现象。
 
 </details>
 

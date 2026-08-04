@@ -62,6 +62,17 @@ safety evaluation」—— 但这是一句 consider，**没有负责人、没有
 
 这一点和你另一个项目 stock-agent 踩过的坑高度同构，详见
 [stock-agent/_INDEX.md](../stock-agent/_INDEX.md) 里「两个项目可以互相借鉴」一节。
+[capsec-strain-invariance](../capsec-strain-invariance/_INDEX.md) 的 60-run 数据里
+也出现了同一类整齐比值（depth=2 时 diversion=1.0），同样是小 n 造成的，见其索引「需要你注意的」#2。
+
+### 6. 独立佐证：capsec-strain-invariance 从生成侧复现了「诽谤是防御盲区」
+
+`03-findings` §4 的三闸门模型认定「诽谤类记录归档转述」是唯一同时穿透三闸的向量。
+[capsec-strain-invariance](../capsec-strain-invariance/_INDEX.md) 这边从**攻击生成**
+的角度独立跑出了同一个结论：`content_assertion`（诽谤）是三种伤害 shape 里唯一测得出
+非零 diversion 的一种，`exfiltration`/`unauthorized_action`（要求显式有害动作）在
+所有 depth 上都是 0。两个项目分别从「测防御」和「打生成」两端撞到了同一条边界——
+这不是巧合，值得在后续报告里把这两份证据放在一起引用，互相加固而不是各自孤立地说。
 
 ---
 
