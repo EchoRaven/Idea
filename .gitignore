@@ -4,3 +4,9 @@ sync/last-run.log
 # 各项目拉下来的原始文档不入库 —— 可能很大、可能含未脱敏内容。
 # 我处理归档后的 progress/ 和 tech/ 才进版本库。
 projects/*/_inbox/
+
+# 编译产物
+app/IdeaSync.app/
+sync/agent-sync.log
+
+.lock/

@@ -40,6 +40,29 @@ die()  { echo "RESULT: error|$1"; echo "[$(date '+%F %T')] ERROR $1" >> "$LOG"; 
 cd "$IDEAS_DIR" 2>/dev/null || die "找不到仓库 $IDEAS_DIR"
 git rev-parse --git-dir >/dev/null 2>&1 || die "$IDEAS_DIR 不是 git 仓库"
 
+# ---- 互斥锁 ----
+# 定时轮询和手工操作撞在一起会把 rebase 搅乱（真踩过），所以两道防护：
+#   ① 同一时刻只允许一个 agent-sync 在跑
+#   ② 工作区不干净 / 有未完成的 rebase 时直接跳过本轮，绝不硬来
+LOCKDIR="$SYNC_DIR/.lock"
+if ! mkdir "$LOCKDIR" 2>/dev/null; then
+  if [ -f "$LOCKDIR/pid" ] && kill -0 "$(cat "$LOCKDIR/pid" 2>/dev/null)" 2>/dev/null; then
+    done_ noop "已有同步在进行，跳过本轮"
+  fi
+  rm -rf "$LOCKDIR"
+  mkdir "$LOCKDIR" 2>/dev/null || done_ noop "无法获取锁，跳过本轮"
+fi
+echo $$ > "$LOCKDIR/pid"
+trap 'rm -rf "$LOCKDIR"' EXIT INT TERM
+
+if [ -d .git/rebase-merge ] || [ -d .git/rebase-apply ]; then
+  done_ noop "仓库有未完成的 rebase，需你手动处理后再同步"
+fi
+
+if [ -n "$(git status --porcelain)" ]; then
+  done_ noop "工作区有未提交改动，跳过本轮（避免与手工操作冲突）"
+fi
+
 # ---- 定位 claude CLI ----
 CLAUDE="$(command -v claude 2>/dev/null)"
 if [ -z "$CLAUDE" ]; then
@@ -65,7 +88,7 @@ fi
 BEHIND="$(git rev-list --count HEAD..'@{u}' 2>/dev/null || echo 0)"
 if [ "$BEHIND" -gt 0 ]; then
   say "拉取 $BEHIND 个新提交…"
-  git pull -q --rebase --autostash 2>/dev/null || die "git pull 失败（可能有冲突，需手动处理）"
+  git pull -q --rebase 2>/dev/null || die "git pull 失败（可能有冲突，需手动处理）"
 else
   # 顶层有待入库的新项目文件夹时，即使没有新提交也要继续往下走
   HAS_INTAKE=0
@@ -93,8 +116,11 @@ for d in */; do
   case "$RESERVED" in *" $name "*) continue ;; esac
   compgen -G "$name/*.md" >/dev/null 2>&1 || continue
 
-  say "发现新项目文件夹 $name，归档到 projects/$name/"
-  mkdir -p "projects/$name/tech" "projects/$name/progress"
+  # 上传的文件夹常带 -docs 后缀（avo-redteam-docs），去掉后才能对上已有的项目目录
+  proj="${name%-docs}"
+
+  say "发现新项目文件夹 $name，归档到 projects/$proj/"
+  mkdir -p "projects/$proj/tech" "projects/$proj/progress"
 
   for f in "$name"/*.md; do
     base="$(basename "$f")"
@@ -106,12 +132,12 @@ for d in */; do
     # 去掉 01- 这类序号前缀；README 统一叫 overview
     clean="$(echo "$base" | sed -E 's/^[0-9]{2}-//')"
     [ "$lower" = "readme.md" ] && clean="overview.md"
-    git mv "$f" "projects/$name/$sub/$DATE-$clean" 2>/dev/null \
-      || mv "$f" "projects/$name/$sub/$DATE-$clean"
+    git mv "$f" "projects/$proj/$sub/$DATE-$clean" 2>/dev/null \
+      || mv "$f" "projects/$proj/$sub/$DATE-$clean"
   done
 
   rmdir "$name" 2>/dev/null || true
-  INTAKE="$INTAKE $name"
+  INTAKE="$INTAKE $proj"
 done
 
 # ---- 找出要交给 agent 的文档 ----
@@ -195,7 +221,10 @@ if git diff --quiet && git diff --cached --quiet; then
   done_ updated "agent 分析完毕，认为无需改动索引"
 fi
 
-SUMMARY="$(echo "$OUT" | grep -v '^\s*$' | tail -5 | tr '\n' ' ' | cut -c1-300)"
+# 注意：不能用 cut -c —— macOS 上它按字节切，会把中文截成半个字符导致 git 报 UTF-8 警告
+SUMMARY="$(echo "$OUT" | grep -v '^\s*$' | tail -5 | tr '\n' ' ' \
+           | python3 -c 'import sys; print(sys.stdin.read()[:300])' 2>/dev/null \
+           || echo "$OUT" | tail -3 | tr '\n' ' ')"
 git add -A
 git commit -qm "agent: 更新 $COUNT 份文档的索引与断点" -m "$SUMMARY" || die "提交失败"
 say "已提交"
