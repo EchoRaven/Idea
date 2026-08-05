@@ -154,6 +154,17 @@ capsec-strain-invariance 新交的 `findings §1b` + `strain_shapes.csv` 把 `ex
 项目结论之前，PROJECTS.md「下一步」②里的「扩大结构化字段任务批量」这一步就更值得
 优先做，一次手工核验的分量已经被 capsec 那边的基线数据反衬得更重了，不宜只停在 n=1。
 
+**2026-08-05 三次更新（capsec 又测穿了第二条复杂度轴，双方结论进一步互相靠拢）**：
+capsec-strain-invariance 同一天又交了 `findings §0/§2c`——除了 depth，又造了第二个
+正交的「复杂度」自变量（inbox 干扰邮件密度），结果同样是 rift 完全不为所动
+（benign 不降反升、diversion 无趋势）。也就是说 capsec 那边已经有**两条独立的复杂度轴
+都测不出 strain 效应**，而本项目用**注入面**（wall vs soft surface）这一个维度就一次
+打穿了同一个模型。这让「决定 rift 防不防得住的是注入面、不是任务复杂度」这个假设的
+相对权重进一步上升——capsec 索引已经把「照抄本项目的 soft-surface 手法，套到
+exfiltration/unauthorized_action 语料上试一次」列为其下一步的最高优先级。如果那个
+实验也打穿了，就意味着两个项目分别从「打生成」和「测防御」两端独立收敛到同一条边界，
+是目前两个项目之间分量最重的一次互证机会，值得优先促成。
+
 ---
 
 ## 技术文档 · tech/
