@@ -165,6 +165,21 @@ exfiltration/unauthorized_action 语料上试一次」列为其下一步的最�
 实验也打穿了，就意味着两个项目分别从「打生成」和「测防御」两端独立收敛到同一条边界，
 是目前两个项目之间分量最重的一次互证机会，值得优先促成。
 
+**2026-08-05 四次更新（capsec 拿到第一条真实跨能力证据，方法论上对本项目验证
+groovy vs rift 有直接参考价值）**：capsec-strain-invariance 新增 §0a，首次在同一批
+语料上对比了一个真正弱的 victim（Llama-4-8B-Instruct-Preview）和强 victim（rift）——
+同一条 depth 轴把弱 victim 的 benign_rate 压到 0，对 rift 完全不起作用，是「能力决定
+同一任务复杂度是否触及 frontier」这条机制第一次有真实数据支撑。但同时诚实报告了一个
+重要负面发现：把 diversion 按 relative-strain 归一化后，两个 victim 在唯一可比点上
+并不重合（文档原话"tentatively against naive strain-invariance"）——如果本项目未来
+真的拿到 groovy key、想验证「groovy 比 rift 更强所以更抗打」这类跨模型能力假设（目前
+仍是上方 #6 提到的未过 Tier-2 的 hypothesis），capsec 这套「同一语料对比不同能力
+victim」的方法本身可以直接借鉴，但也要提前预期"归一化后曲线未必重合"这个陷阱，不要
+假设能力差异会带来简单可预测的攻击面差异。另外这次解锁弱 victim 用的 Meta 网关
+schema 净化器（`SANITIZE_TOOL_SCHEMAS`，修的是 `api.llama.com/compat` 对缺 scalar
+type 参数的整体拒绝）如果本项目未来要接入除 rift/groovy 外的其它 Llama 家族模型，
+可以直接复用，不用重新踩这个坑。
+
 ---
 
 ## 技术文档 · tech/
