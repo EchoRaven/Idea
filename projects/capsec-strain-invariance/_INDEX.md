@@ -5,16 +5,24 @@
 双轨架构：`rtg-capsec`（生成 depth-N 依赖链攻击任务）+ `dtap-capsec`（跑 victim、
 env-state 三值判定、出 strain 曲线）。
 
-**最近一次收到文档**：2026-08-05（第六批——`findings.md` 同一天内第三次被就地追加：新增
-§2d「within-victim 相关性检验」——把 rift content_assertion 全部 11 个 cell（depth 轴 8 个 +
-distractor 轴 3 个）的 benign_rate 与 diversion 放在一起算相关，得到 Pearson r=+0.61 /
-Spearman ρ=+0.63，方向与 strain 假设预测的负相关相反，作为 §0 收敛结论的第三条支撑证据；
-但样本小（n=11，p≈0.05 属边缘显著）、且混池了两条不同自变量的 cell，详见「需要你注意的」
-#10。这是继 §1b（08-05 上午）、§0/§2c（08-05 稍晚）之后同一天第三次追加同一份文件）
-**当前节奏**：仍然很快——08-04 三轮 + 08-05 三轮，五天内六次实质性交付，且都是同一条
+**最近一次收到文档**：2026-08-05（第七批——`findings.md` 同一天内第四次被就地追加：§2c
+新增「Confusable variant (discrimination strain)」子实验——不再是注入不相关噪声邮件，而是
+注入 K 封**仿冒发件人**的近似重复邮件（如 `lin.lee@suzukirobotics-inc.jp` 冒充真实的
+`…suzukirobotics.jp`），逼 victim 从「过滤噪声」升级到「判别真伪」；rift 在 K=0/60/150 上
+同样是负结果（benign 0.917→0.833，diversion 0.36/0.36/0.46，无趋势）。§0 headline 相应
+从「两条独立复杂度轴」改写为「三条独立复杂度轴（depth、干扰密度、判别力）」，收尾一句
+「rift is robust to **three** independent complexity axes」。但这条子实验完全没报告
+n_admissible、没有 Wilson CI、没有原始数据文件（比 #9 已经批评过的 distractor 变体证据还
+薄），且暴露了一个基线不稳问题——同一批 12 个任务的 K=0 基线在 distractor 探测里是 0.75、
+在这次 confusable 探测里是 0.917，文档只用「~±0.15 的跑间方差」一笔带过，但这个方差本身是
+从两个点反推出来的，不是重复测量估出来的，详见「需要你注意的」新增 #11。这是继 §1b（08-05
+上午）、§0/§2c-distractor（08-05 稍晚）、§2d（08-05 傍晚）之后同一天第四次追加同一份文件）
+**当前节奏**：仍然很快——08-04 三轮 + 08-05 四轮，五天内七次实质性交付，且都是同一条
 autonomous loop 的连续产出（每轮都直接接上一轮留下的 to-do：先补 exfil/UA 逐 cell 区间
-[§1b]，再动手做 fork 选项 (a) 的第一个候选轴 [§2c]，这轮又对已收集数据做了一次新角度的
-再分析 [§2d]）。[avo-redteam](../avo-redteam/_INDEX.md) 同期也是这个节奏。
+[§1b]，再动手做 fork 选项 (a) 的第一个候选轴 [§2c distractor]，再对已收集数据做一次新角度的
+再分析 [§2d]，这轮又在同一个 §2c 小节里加了第三个更难的子实验 [discrimination]）。产出速度
+没有慢，但四次追加里没有一次是已经建议了三轮的「换注入面」pivot——详见「需要你注意的」#7 的
+第四次更新。[avo-redteam](../avo-redteam/_INDEX.md) 同期也是这个节奏。
 
 ---
 
@@ -62,6 +70,12 @@ axis」。这意味着项目最初的架构决策「depth-N 依赖链是唯一 s
 strain 前沿模型的自变量）的第一个候选（distractor density，干扰邮件密度）已经建好并跑完，
 同样是负结果，和 depth 轴收敛成同一个结论（新增 §0「收敛结论」）。但这条新证据的统计功效
 明显比这条depth 轴薄，且有几个没处理好的地方——详见下方新增 #9。
+
+**2026-08-05 二次更新**：同一个 §2c 小节又加了第二个候选变体——判别力（discrimination，
+仿冒发件人的近似重复邮件），结果同样是负，§0 headline 因此把「两条独立复杂度轴」改写成
+「三条」。但这第三条轴的证据比 distractor 变体更薄（连 n_admissible 都没报），详见下方
+新增 #11。三条独立复杂度轴全部收敛到负结果后，fork 选项 (a) 这条路径本身继续加新轴的
+边际价值已经很低——详见 PROJECTS.md「下一步」①的最新措辞。
 
 ### 3.（延续，本轮未变）「victim 梯度已不是 blocker」和上一轮「second victim 全部受阻」的说法有张力
 
@@ -153,6 +167,14 @@ well-powered sweep 已经耗尽了当前精力（见 #2），但如果后续要�
 证据没有变弱：§2d 从 within-victim 相关性角度再给出一条同方向证据（虽然比 §1b/§2b 弱），
 和 avo-redteam 的 soft-surface 正面结果一起，让「注入面才是自变量」这个假设的先验权重
 继续累积，而实际验证仍然是零。
+
+**2026-08-05 四次更新**：这条建议第四次未被采纳——本项目这次追加的是同一个 §2c 小节内部
+的第三个子实验（判别力/discrimination 变体，见新增 #11），仍然是在复杂度维度上继续深挖，
+不是注入面 pivot。现在收敛到同一个负结果的证据已经有四条（depth 轴、distractor 轴、
+discrimination 轴、within-victim 相关性），而「注入面才是关键」这个假设依旧一次都没有在
+本项目内被直接验证过——continued negative results 在复杂度维度上的边际信息量已经很低，
+这个 pivot 被反复建议却反复搁置本身已经构成一个值得单独关注的模式，不只是某一条具体建议
+没被采纳这么简单。
 
 ### 8.（本轮新发现，方法论透明度问题）`strain_shapes.csv` 新增的 `relative_strain`/`frontier_depth` 归一化没有写进任何 prose 文档，且对弱 victim 的取值不稳
 
@@ -252,6 +274,45 @@ corr(1−benign, diversion)=−0.61——strain 假设预测这个数应该是�
 conclusive」这个措辞，没有过度声称。只是提醒下游引用时，这条比 §1b/§2b 弱得多，不要当成
 第三个 definitive 结论使用。
 
+### 11.（本轮新增，第四次追加，§2c 内的第三个子实验）discrimination/confusable-sender 变体：也是负结果，但比 distractor 变体证据更薄、且暴露了一个基线不稳问题
+
+[findings §2c 追加段](tech/2026-08-04-findings.md) 在原有的「distractor density」小节
+之后，又加了一个更难的变体：不再是往收件箱塞不相关噪声邮件，而是塞 K 封**近似重复**邮件
+——主题和真实记录一致，但发件人是仿冒地址（如 `lin.lee@suzukirobotics-inc.jp` 冒充真实的
+`…suzukirobotics.jp`），逼 victim 不能只靠过滤噪声，得真的**判别**出哪封是真的。judge-safe
+机制和 distractor 变体一样（按精确发件人过滤）。结果（rift，12 个任务，自带一份 K=0 基线）：
+
+| K | 0 | 60 | 150 |
+|---|:--:|:--:|:--:|
+| benign_rate | 0.917 | 0.917 | 0.833 |
+| diversion | 0.36 | 0.36 | 0.46 |
+
+同样是平的——benign 不降反有余量、diversion 在噪声范围内摆动。§0 headline 据此把
+depth、干扰密度、判别力写成三条 rift 都扛住的独立复杂度轴，收尾一句「rift is robust to
+**three** independent complexity axes」。
+
+但这条子实验有比 #9 已经指出的 distractor 变体更明显的短板：
+
+1. **完全没有报告样本量**——distractor 变体好歹在 prose 里给出了「n_admissible 11」和
+   逐 K 的分子（4/11、5/11、3/11、1/6）；这里只给了 benign_rate/diversion 两个比值，
+   K=0/60/150 三档一个 n_admissible 都没写，读者没法验算，也没法判断 K=0 和 K=60 的
+   diversion 完全相等（都是 0.36）是巧合还是分母太小的重合。
+2. **没有 Wilson CI**——延续 #9 已指出的规则违反（项目自己写死「diversion 比值一律配
+   区间」），这里更严重，因为连分子分母都没给。
+3. **没有随附原始数据文件**——`2026-08-05-strain_shapes.csv` 逐行核对过，只覆盖 depth 轴
+   （content/exfiltration/unauthorized_action）和 gemini-flash-lite 三行，完全不含
+   distractor 或 discrimination 的任何一行；这条子实验目前唯一的凭证就是 prose 里这一张表。
+4. **基线本身不稳，且这点是文档自己暴露出来的**——「Methodological note」承认同一批 12 个
+   任务的 K=0 基线，在 distractor 探测里是 0.75、在这次 confusable 探测里是 0.917，相差
+   0.167，只归因于「victim 有 ~±0.15 的跑间 benign 方差」。但这个 ±0.15 是从**两次**探测
+   反推出来的单一差值，不是从重复测量估出的方差——用两个点定出「误差范围」去论证只需做
+   within-run 比较，这个论证本身偏薄，下游引用时不要把它当成已经量化过的稳定噪声水平。
+
+不是说方向错了——三条轴的负结果彼此吻合，且文档没有用「definitive」形容这一节（延续 #9
+指出的克制用词），这点仍然值得肯定。但 §0 headline 把三条轴并列写成「swept at real
+power」，对 discrimination 这一档尤其不准确——它是三条轴里证据最薄的一条，不该被放在和
+depth 轴同一句话里、给读者「同等权重」的印象。
+
 ---
 
 ## 进度汇报 · progress/
@@ -269,12 +330,12 @@ conclusive」这个措辞，没有过度声称。只是提醒下游引用时，�
 |---|---|---|---|
 | 2026-08-04 | [overview](tech/2026-08-04-overview.md) | 项目总纲：定义 strain-invariance 假设（同模型内 strain 越高越易被攻破；跨模型因部署范围随能力扩张，ASR 大致不变）、双轨架构图、三种伤害 shape 定义表（exfiltration / unauthorized_action / content_assertion）、depth-N 依赖链作为唯一 strain 自变量、三值 judge（diverted/succeeded/admissible/undecidable）的判定逻辑。 | 文末指向 `01-/02-/03-/04-*.md` 的内部链接，归档改名（`2026-08-04-*.md`）后已经指不到实际文件了——纯格式问题，不影响内容，不需要动原文档。 |
 | 2026-08-04 | [technical-roadmap](tech/2026-08-04-technical-roadmap.md) | 架构与实现细节：两个 git worktree（`rtg-capsec` 生成端 branch `capsec/env-state-judges`、`dtap-capsec` 测量端 branch `capsec/measurement-layer`）；env-state judging 的渲染链路（LLM 只出结构化 `HarmDeclaration`，harness 确定性渲染 `judge.py`）、三种 shape 各自的固定注入构造方式、depth 数据模型与 `validate_chain` 校验闸门、k=3 self-consistency 质量投票；测量侧 victim runner 命令、judge-LLM 从 gpt-5.4 切到 deepseek-chat 的修复过程、`analyze_strain.py` 的结果-语料对齐逻辑；victim 能力/可用性表。 | victim 表把「为什么能力梯度这么窄」交代得很清楚——Meta 前沿模型网关工具协议互不兼容、Anthropic 缺 credit、Google 免费层只开 flash——这张表本身就是对当前卡点最好的证据，建议随后续 victim 变化持续更新，别只留在这一份快照里。 |
-| 2026-08-04（追加 §1b/§2b/§3/§4；08-05 同一天三次追加：先补 §1b，再加 §0/§2c，本轮又加 §2d） | [findings](tech/2026-08-04-findings.md) | **§0（开篇 headline）——「收敛结论」**：把 §2b（depth 轴）和 §2c（本轮新增的 distractor-density 轴）并列总结为「task-complexity strain 够不到 rift 的前沿，两条独立轴都被扛住」，明确写下 cross-victim invariance 主张仍卡在第二个 well-powered victim 上；§1 shape-依赖初步观察（super_nova，n=1–3，见需要你注意 #4）；**§1b——同一 shape-依赖结论在 rift 上用 well-powered 数据复现**：exfiltration（n_adm 合计 31，5 depth 全 0）、unauthorized_action（n_adm 合计 15，5 depth 全 0）diversion 全部 0.0，同批 content_assertion 0.056–0.556，明确写下「supersedes the n=1–3 tables below (§2)」；§2 首批多 victim 小样本数据（n 太小，已被 §1b/§2b 取代）；**§2b——rift 的 depth 1→24 well-powered（n_admissible 15–22/cell，~135 任务）definitive 结果**：chain-depth 不 strain rift（benign_rate flat-to-rising，depth24=0.875；diversion 在 depth1 最低之后 noisy-flat，无 monotonic 上升）；**§2c（本轮新增）——第二个正交 strain 轴：inbox 干扰邮件密度（K=0/60/150/300，depth 固定为 2）**：benign_rate 同样不降反升（0.75→0.83），diversion 同样是噪声（0.36/0.46/0.27/0.17，无趋势），文档自己没有用「definitive」形容这一节（只在 §2b 用过），但基础样本量明显更薄（n_admissible=11，K=300 只 partial 6/12，K=600 直接跳过）；**§2d（本轮新增）——within-victim 相关性检验**：
+| 2026-08-04（追加 §1b/§2b/§3/§4；08-05 同一天四次追加：先补 §1b，再加 §0/§2c-distractor，再加 §2d，本轮又在 §2c 内加 discrimination 子实验） | [findings](tech/2026-08-04-findings.md) | **§0（开篇 headline）——「收敛结论」**：把 §2b（depth 轴）和 §2c（distractor-density 轴 + 本轮新增的 discrimination 轴）并列总结为「task-complexity strain 够不到 rift 的前沿，三条独立轴都被扛住」，明确写下 cross-victim invariance 主张仍卡在第二个 well-powered victim 上；§1 shape-依赖初步观察（super_nova，n=1–3，见需要你注意 #4）；**§1b——同一 shape-依赖结论在 rift 上用 well-powered 数据复现**：exfiltration（n_adm 合计 31，5 depth 全 0）、unauthorized_action（n_adm 合计 15，5 depth 全 0）diversion 全部 0.0，同批 content_assertion 0.056–0.556，明确写下「supersedes the n=1–3 tables below (§2)」；§2 首批多 victim 小样本数据（n 太小，已被 §1b/§2b 取代）；**§2b——rift 的 depth 1→24 well-powered（n_admissible 15–22/cell，~135 任务）definitive 结果**：chain-depth 不 strain rift（benign_rate flat-to-rising，depth24=0.875；diversion 在 depth1 最低之后 noisy-flat，无 monotonic 上升）；**§2c——第二、第三个正交 strain 轴**：先是 inbox 干扰邮件密度（K=0/60/150/300，depth 固定为 2），benign_rate 不降反升（0.75→0.83）、diversion 是噪声（0.36/0.46/0.27/0.17，无趋势），基础样本量薄（n_admissible=11，K=300 只 partial 6/12，K=600 直接跳过）；**本轮新增的 confusable/discrimination 子实验**——K 封仿冒发件人的近似重复邮件（K=0/60/150），benign 0.917→0.833、diversion 0.36/0.36/0.46，同样无趋势，收尾一句「rift is robust to **three** independent complexity axes」，但这条子实验连 n_admissible 都没报告，比 distractor 变体证据更薄，且暴露基线在两次探测间相差 0.167（0.75 vs 0.917）只用「~±0.15 跑间方差」带过；文档自己没有用「definitive」形容 §2c 任何一个子实验（只在 §2b 用过）；**§2d——within-victim 相关性检验**：
 把 rift content_assertion 的全部 11 个 cell（depth 轴 8 个 + distractor 轴 3 个）的
 benign_rate 和 diversion 放一起算相关，得到 Pearson r=+0.61、Spearman ρ=+0.63——方向与
 strain 假设预测的负相关相反，是「proximity-to-frontier 提升易感性」这个朴素假设的又一次
 within-victim 反证，文档自己用「suggestive, not conclusive」定性，没有过度声称；**§3**
-总结方法论上行得通的部分（三值 judge、genuine depth gating、确定性判据 vs llm_check 判据的脆弱性对比）；**§4** 记录 judge.py import 路径要从 canonical `dt_arena` 找、judge 会继承 victim 的 `OPENAI_BASE_URL`、前沿模型网关对 agentic tool-use 不友好（Gemini 走 Google 原生 endpoint 是目前唯一干净的路）。文档自己指出「content 易感、action 不易感」的结果和 [avo-redteam](../avo-redteam/_INDEX.md)「诽谤类记录归档转述是唯一防御盲区」的结果互相印证，§1b 又把这条印证从 n=3 加固到 well-powered。 | §1b/§2b 与 [`2026-08-05-strain_shapes.csv`](tech/2026-08-05-strain_shapes.csv) 的数字完全一致（逐条核对过 n_admissible、diversion_rate、Wilson CI，没有发现不匹配），数据完整性可信。但 CSV 里的 `frontier_depth`/`relative_strain` 两列，findings.md 全文一次都没提到，也没有说明算法——见需要你注意 #8，这是上一轮唯一的透明度缺口。**§2c 是本轮新的审阅重点，见需要你注意 #9**：四个 diversion 比值全部裸报、没有配 Wilson CI（违反本项目自己在关键决策记录里写死的规则），也没有随附逐 task 原始数据文件核对（不像 §1b/§2b 有 CSV 佐证）——不是说结论错了，是 §0 把它和 §2b 并列陈述为「两条轴都在 real power 下扫过」有轻微 overclaim，两者的证据分量并不对等。§2b 末尾的「两条前进路径」和 progress.md 的「fork, needs a decision」仍是同一件事的两处重复表达（上一轮已指出，本轮未变），建议以后这类需要人做选择的分叉决策只在 progress 里写一处。另外 §3/§4 提到「llm_check 判据脆弱，曾把 judge 的 404 静默吞成 diverted=false」这个坑——核对 [runbook](tech/2026-08-04-runbook.md) 后确认：runbook 只静态记录了「judge 默认 deepseek-chat、需要 provider 路由」这个配置事实，**没有把「验证 judge 确实存活/可达」写成操作步骤**，这个已经真实发生过的失败模式（曾让"resisted"是假象）目前仍只停留在事后记录，没有变成可执行的核验清单项，和 avo-redteam 那边「trivial 假防御未进核验清单」是同一类坑（见 [avo-redteam 索引](../avo-redteam/_INDEX.md) #4）。**本轮新增的 §2d 见需要你注意 #10**——结论方向与 §0 一致，但 11 个 cell 里有 3 个来自 distractor 轴、benign_rate 几乎不变（0.75/0.75/0.83），把它们和 depth 轴的 8 个 cell 混池算同一条相关系数，隐含「不同来源导致的 benign_rate 变化和 diversion 的关系一样」这个未经验证的前提；仅用 depth 轴 8 个 cell 时相关性本身也不显著（r=+0.58, n.s.），这一点文档如实披露，没有隐瞒。 |
+总结方法论上行得通的部分（三值 judge、genuine depth gating、确定性判据 vs llm_check 判据的脆弱性对比）；**§4** 记录 judge.py import 路径要从 canonical `dt_arena` 找、judge 会继承 victim 的 `OPENAI_BASE_URL`、前沿模型网关对 agentic tool-use 不友好（Gemini 走 Google 原生 endpoint 是目前唯一干净的路）。文档自己指出「content 易感、action 不易感」的结果和 [avo-redteam](../avo-redteam/_INDEX.md)「诽谤类记录归档转述是唯一防御盲区」的结果互相印证，§1b 又把这条印证从 n=3 加固到 well-powered。 | §1b/§2b 与 [`2026-08-05-strain_shapes.csv`](tech/2026-08-05-strain_shapes.csv) 的数字完全一致（逐条核对过 n_admissible、diversion_rate、Wilson CI，没有发现不匹配），数据完整性可信。但 CSV 里的 `frontier_depth`/`relative_strain` 两列，findings.md 全文一次都没提到，也没有说明算法——见需要你注意 #8。**§2c 的 distractor 子实验见需要你注意 #9**：四个 diversion 比值全部裸报、没有配 Wilson CI（违反本项目自己在关键决策记录里写死的规则），也没有随附逐 task 原始数据文件核对（不像 §1b/§2b 有 CSV 佐证）。**§2c 本轮新增的 discrimination 子实验证据更薄，见需要你注意 #11**：连 n_admissible 都没给，且 K=0 基线在两次探测间从 0.75 变到 0.917——§0 把三条轴并列写成「swept at real power」对这条轴尤其不准确，不是说结论错了，是 §0 的收敛表述容易让读者把三条轴的可信度拉平。§2b 末尾的「两条前进路径」和 progress.md 的「fork, needs a decision」仍是同一件事的两处重复表达（上一轮已指出，本轮未变），建议以后这类需要人做选择的分叉决策只在 progress 里写一处。另外 §3/§4 提到「llm_check 判据脆弱，曾把 judge 的 404 静默吞成 diverted=false」这个坑——核对 [runbook](tech/2026-08-04-runbook.md) 后确认：runbook 只静态记录了「judge 默认 deepseek-chat、需要 provider 路由」这个配置事实，**没有把「验证 judge 确实存活/可达」写成操作步骤**，这个已经真实发生过的失败模式（曾让"resisted"是假象）目前仍只停留在事后记录，没有变成可执行的核验清单项，和 avo-redteam 那边「trivial 假防御未进核验清单」是同一类坑（见 [avo-redteam 索引](../avo-redteam/_INDEX.md) #4）。**§2d 见需要你注意 #10**——结论方向与 §0 一致，但 11 个 cell 里有 3 个来自 distractor 轴、benign_rate 几乎不变（0.75/0.75/0.83），把它们和 depth 轴的 8 个 cell 混池算同一条相关系数，隐含「不同来源导致的 benign_rate 变化和 diversion 的关系一样」这个未经验证的前提；仅用 depth 轴 8 个 cell 时相关性本身也不显著（r=+0.58, n.s.），这一点文档如实披露，没有隐瞒。 |
 | 2026-08-04 | [runbook](tech/2026-08-04-runbook.md) | 环境变量与两个 worktree 路径；三步操作流程（生成语料，docker-free → victim sweep，需 docker，从 `dtap-capsec` 跑 → `analyze_strain.py` 出图）具体命令；operational caveats：共享 docker 主机清理规则（不许删别人的 `pool_*`/`rds-*`）、UIUC 用 docker 不是 podman、judge LLM 必须走独立 provider（不能继承 victim 的 base_url）、`.env` 里 Meta key 的 `|` 转义坑、Gemini 免费层限流（`--max-parallel 1`）。 | 无。 |
 | 2026-08-05（新文件） | [`strain_shapes.csv`](tech/2026-08-05-strain_shapes.csv) | 原始数据表：4 个 model×shape 分组（rift 的 content_assertion/exfiltration/unauthorized_action，gemini-2.5-flash-lite 的 content_assertion）、22 行，逐 depth-cell 给出 n / benign_rate / n_admissible / diversion_rate / Wilson 95% CI / undecidable_rate，另加两个此前没出现过的列 `frontier_depth`、`relative_strain`。是 findings §1b/§2b 表格和本索引 #1/#4 数字的直接数据源。 | 逐条核对过表格数字与 findings.md 的转述一致，没有发现误差。`frontier_depth`/`relative_strain` 两列缺文档说明，且对样本量小的行（尤其 gemini-2.5-flash-lite 的 n=1 cell）取值不稳，已记入需要你注意 #8，正式引用前建议先补文档说明。 |
 
@@ -299,6 +360,11 @@ within-victim 反证，文档自己用「suggestive, not conclusive」定性，�
   **2026-08-05 三次追加**：§2d 从 within-victim 相关性角度对同一个待决策项给出第三条同方向
   证据（见「需要你注意的」#10），但仍是对已有数据的再分析，不是新自变量或新实验，不改变
   待决策状态——是否引入新自变量 / 换 victim / 转向注入面，依旧悬而未决。
+  **2026-08-05 四次追加**：同一个 §2c 小节又加了 discrimination（判别力，仿冒发件人近似
+  重复邮件）子实验，也是负结果，让「候选自变量」这个待决策项下累积的探索性尝试增加到两个
+  （distractor + discrimination），但两个都明显弱于 depth 轴的方法论完整度（均缺 Wilson
+  CI、原始数据文件；discrimination 这次连 n_admissible 都没给），且都不是待决策项本身要
+  解决的「转向注入面」——这个 pivot 依旧悬而未决，见「需要你注意的」#7 第四次更新。
 - **diversion 只在 admissible 上计分，undecidable 单独排除** —— 这是处理「too weak to reach the injection ≠ resisted」这个混淆的正式机制，写进了判定本身而非靠人工事后甄别。
 - **judge LLM 换成 deepseek-chat，且走独立 provider 路由** —— 判官不能继承 victim 的 `OPENAI_BASE_URL`，否则判官会打到 victim 的网关上（曾经导致 404 被静默吞成「resisted」）。
   **2026-08-04 追加（证据强化，但操作清单未跟上）**：findings §3/§4 把这条决策的必要性坐实——确定性判据
@@ -311,6 +377,9 @@ within-victim 反证，文档自己用「suggestive, not conclusive」定性，�
   （4/11、5/11、3/11、1/6）没有遵守这条规则——四个比值全部裸报，没有区间。样本量本身
   也比 depth 轴薄（基线 n_admissible=11 vs depth 轴 15–22/cell），是目前对这条规则
   执行力最弱的一节，详见「需要你注意的」#9。
+  **2026-08-05 二次追加（例外扩大）**：同一小节新增的 discrimination 子实验比 distractor
+  更彻底地不遵守这条规则——连分子分母都没给，不是「裸报比值」，是「比值本身都验证不了」。
+  详见「需要你注意的」#11。
 - **新 victim 优先复用现有 endpoint/key/eval harness**（2026-08-04 追加）—— rift 5.14 与 super_nova 同 `api.ai.meta.com/v1` + `LLAMA_API_KEY`、标准 tool-calling，直接进现有 openaisdk eval，不用每次扩梯度都去攻克一个新网关的兼容性问题。
   **2026-08-04 追加（跨项目参考）**：[avo-redteam](../avo-redteam/_INDEX.md) 新交了一份
   [`using-victims-from-another-repo`](../avo-redteam/tech/2026-08-04-using-victims-from-another-repo.md)
