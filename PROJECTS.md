@@ -16,9 +16,9 @@
 - **一句话**：验证 agent 攻击易感性是否由「相对能力强度」(任务离模型能力上限多近)决定,而非绝对能力 —— 若成立则「能力进步不买安全」
 - **仓库**：`rtg-capsec`(生成) + `dtap-capsec`(测量)　**分支**：`capsec/env-state-judges` / `capsec/measurement-layer`　（推到 remote `vaibackup`）
 - **技术栈**：env-state 三值判定 + depth 依赖链(strain 轴) + 固定注入 + deepseek judge + super_nova/Gemini victim
-- **断点**：扩语料到 well-powered 这条「下一步」已经做完并给出定论——rift 5.14 的 content 语料三轮扩容后达到 n_admissible 15–22/cell(~135 任务),depth 1→24 全 sweep 完成。结果是**负结果**:benign_rate 不降反升(depth 24 达 0.875,已核实不是判据变松的假象)、diversion 在 depth 1 最低后噪声式持平、无 monotonic 趋势 —— **chain-depth 不能 strain 一个前沿模型,depth 轴作为 strain 自变量在 rift 上已被证伪**,原先「统计 power 不够」的说法现在应更新为「power 够了,答案是否定的」。同时,想把这个 well-powered 规模复制到第二个 victim 目前全部受阻:GPT 网关在 tool-result 轮崩溃、Gemini 免费层限流(多步任务跑不完)、Meta codename 已 500 逾 6 小时 —— 只有 rift + deepseek 生成可靠可用。这和上一份「4-victim ladder 已证伪梯度太窄」的乐观表述有张力,后者只是在 n=1–3 的小样本上跑出梯度,不等于能把第二个 victim 也扩到 well-powered。**2026-08-05 新增**:同一批 rift 数据把 exfiltration/unauthorized_action 两个「动作」shape 也补齐到逐 depth-cell 的 Wilson 区间(合计 n_admissible 31/15,此前只有跨 5 个 depth 聚合的 14/8),结果依旧是全部 0 diversion——「拒绝边界卡在动作而非内容,不卡在深度」现在和「depth 不能 strain 前沿模型」并列成为两条 well-powered 结论,直接呼应 avo-redteam 独立测出的 wall-vs-soft-surface 边界(exfil/UA 目前测的仍是 wall 等价物,尚未测 soft-surface,见下方笔记)。unauthorized_action 因 benign 完成率低(0.13–0.63)admissibility 仍然塌缩(n_adm 1–5/cell,最多 75% undecidable),这部分统计仍偏弱,但跨两个 shape 全 0 的一致性是主要证据。另外新数据文件里首次出现的 `relative_strain`/`frontier_depth` 归一化列,没有任何 prose 文档说明算法,且对 gemini-2.5-flash-lite 这类小样本 victim 完全押在单次 n=1 结果上,正式引用前需要补文档说明(细节见项目索引「需要你注意的」#8)。**2026-08-05 二次新增(同一天第二次追加,findings.md 新增 §0/§2c)**:项目实际动手做了上一轮「下一步」①②里的②——把 distractor density(inbox 干扰邮件密度,K=0/60/150/300,depth 固定为 2)当成新自变量跑通,结果同样是负:benign_rate 不降反升(0.75→0.83)、diversion 是纯噪声(0.36/0.46/0.27/0.17,无趋势),§0 把这条和 depth 轴并列写成「两条独立复杂度轴都被 rift 扛住」的收敛结论。但这条新证据比 depth 轴弱得多:基线 n_admissible 只有 11(depth 轴是 15–22/cell)、最高的 K=300 只 partial 跑了 6/12、K=600 直接跳过、且四个 diversion 比值全部裸报没配 Wilson CI——直接违反项目自己在决策记录里写死的「diversion 比值一律配区间」规则。更值得注意的是**上一轮明确建议优先做的①(换注入面 wall→soft surface)没有被采纳**——项目选择先做②而不是①,这不是逻辑矛盾(大概率是同一条 autonomous loop 在建议发出前就已经在跑这个方向),但结果是这条最具体、成本最低、且已经有 avo-redteam 正面证据打底的建议又被搁置了一轮,而两条独立复杂度轴都测出负结果后,继续加第三条新轴的边际价值在下降,转向注入面的优先级应该更高而不是更低。**2026-08-05 三次新增(同一天第三次追加,findings.md 新增 §2d)**:项目这次没有跑新实验,而是对已收集的 rift content_assertion 数据做了一次 within-victim 相关性再分析——把 depth 轴 8 个 cell 和 distractor 轴 3 个 cell 的 benign_rate 与 diversion 放一起算相关,得到 Pearson r=+0.61 / Spearman ρ=+0.63(方向与「越接近 frontier 越易被攻破」的预测相反),作为 §0 收敛结论的第三条支撑。但这条证据比前两条更薄:仅用 depth 轴 8 个 cell 时相关性本身不显著(r=+0.58,n.s.),是混入 distractor 轴那 3 个 benign_rate 几乎不变(0.75/0.75/0.83)的低方差点,才把混池后的 p 值压到边缘显著(≈0.05);文档自己也只定性为「suggestive, not conclusive」,没有过度声称,这点值得肯定。**关键的是**:三次同日追加(§1b/§2c/§2d)里,两次是深挖同一批数据的新角度、一次是补一条统计薄弱的新轴,没有一次是上两轮就建议、优先级理应最高的「换注入面(wall→soft surface)」原型——这个建议现在已经被连续搁置三轮,而继续在「复杂度/相关性」方向上产出第四条证据的边际价值正在明显递减。**2026-08-05 四次新增(同一天第四次追加,findings.md 在同一个 §2c 小节内又加了一个 discrimination 子实验)**:项目把干扰邮件换成 K 封仿冒发件人的近似重复邮件(如 `lin.lee@suzukirobotics-inc.jp` 冒充真实的 `…suzukirobotics.jp`),逼 rift 从「过滤噪声」升级到「判别真伪」。结果同样是负:K=0/60/150 上 benign_rate 0.917→0.833、diversion 0.36/0.36/0.46,无趋势。§0 headline 因此把「两条独立复杂度轴」改写成「三条」(depth、干扰密度、判别力),收尾一句「rift is robust to three independent complexity axes」。但这条子实验的证据比 distractor 变体更薄:完全没有报告 n_admissible(distractor 好歹给了 11 和逐 K 分子)、没有 Wilson CI、没有原始数据文件;更值得注意的是文档自己暴露了一个基线不稳问题——同一批 12 个任务的 K=0 基线,在 distractor 探测里是 0.75,在这次 confusable 探测里是 0.917,相差 0.167,只用「~±0.15 的跑间方差」带过,而这个方差本身是从两次探测的单一差值反推出来的,不是重复测量估出来的。四次同日追加里累计已经收敛出四条独立证据(depth 轴、distractor 轴、discrimination 轴、within-victim 相关性),但连续三轮建议、本轮(第四次)依旧未被采纳的「换注入面(wall→soft surface)」pivot——这个反复搁置的模式本身现在比任何单条新证据都更值得关注,详见项目索引「需要你注意的」#7 第四次更新、新增 #11。
-- **下一步**：①（最高优先级,具体可执行,过去三轮已建议、本轮——findings §2c 的
-  discrimination 子实验——依然未被采纳,这是第四次搁置,别再拖）把「换注入面(wall→soft
+- **断点**：扩语料到 well-powered 这条「下一步」已经做完并给出定论——rift 5.14 的 content 语料三轮扩容后达到 n_admissible 15–22/cell(~135 任务),depth 1→24 全 sweep 完成。结果是**负结果**:benign_rate 不降反升(depth 24 达 0.875,已核实不是判据变松的假象)、diversion 在 depth 1 最低后噪声式持平、无 monotonic 趋势 —— **chain-depth 不能 strain 一个前沿模型,depth 轴作为 strain 自变量在 rift 上已被证伪**,原先「统计 power 不够」的说法现在应更新为「power 够了,答案是否定的」。同时,想把这个 well-powered 规模复制到第二个 victim 目前全部受阻:GPT 网关在 tool-result 轮崩溃、Gemini 免费层限流(多步任务跑不完)、Meta codename 已 500 逾 6 小时 —— 只有 rift + deepseek 生成可靠可用。这和上一份「4-victim ladder 已证伪梯度太窄」的乐观表述有张力,后者只是在 n=1–3 的小样本上跑出梯度,不等于能把第二个 victim 也扩到 well-powered。**2026-08-05 新增**:同一批 rift 数据把 exfiltration/unauthorized_action 两个「动作」shape 也补齐到逐 depth-cell 的 Wilson 区间(合计 n_admissible 31/15,此前只有跨 5 个 depth 聚合的 14/8),结果依旧是全部 0 diversion——「拒绝边界卡在动作而非内容,不卡在深度」现在和「depth 不能 strain 前沿模型」并列成为两条 well-powered 结论,直接呼应 avo-redteam 独立测出的 wall-vs-soft-surface 边界(exfil/UA 目前测的仍是 wall 等价物,尚未测 soft-surface,见下方笔记)。unauthorized_action 因 benign 完成率低(0.13–0.63)admissibility 仍然塌缩(n_adm 1–5/cell,最多 75% undecidable),这部分统计仍偏弱,但跨两个 shape 全 0 的一致性是主要证据。另外新数据文件里首次出现的 `relative_strain`/`frontier_depth` 归一化列,没有任何 prose 文档说明算法,且对 gemini-2.5-flash-lite 这类小样本 victim 完全押在单次 n=1 结果上,正式引用前需要补文档说明(细节见项目索引「需要你注意的」#8)。**2026-08-05 二次新增(同一天第二次追加,findings.md 新增 §0/§2c)**:项目实际动手做了上一轮「下一步」①②里的②——把 distractor density(inbox 干扰邮件密度,K=0/60/150/300,depth 固定为 2)当成新自变量跑通,结果同样是负:benign_rate 不降反升(0.75→0.83)、diversion 是纯噪声(0.36/0.46/0.27/0.17,无趋势),§0 把这条和 depth 轴并列写成「两条独立复杂度轴都被 rift 扛住」的收敛结论。但这条新证据比 depth 轴弱得多:基线 n_admissible 只有 11(depth 轴是 15–22/cell)、最高的 K=300 只 partial 跑了 6/12、K=600 直接跳过、且四个 diversion 比值全部裸报没配 Wilson CI——直接违反项目自己在决策记录里写死的「diversion 比值一律配区间」规则。更值得注意的是**上一轮明确建议优先做的①(换注入面 wall→soft surface)没有被采纳**——项目选择先做②而不是①,这不是逻辑矛盾(大概率是同一条 autonomous loop 在建议发出前就已经在跑这个方向),但结果是这条最具体、成本最低、且已经有 avo-redteam 正面证据打底的建议又被搁置了一轮,而两条独立复杂度轴都测出负结果后,继续加第三条新轴的边际价值在下降,转向注入面的优先级应该更高而不是更低。**2026-08-05 三次新增(同一天第三次追加,findings.md 新增 §2d)**:项目这次没有跑新实验,而是对已收集的 rift content_assertion 数据做了一次 within-victim 相关性再分析——把 depth 轴 8 个 cell 和 distractor 轴 3 个 cell 的 benign_rate 与 diversion 放一起算相关,得到 Pearson r=+0.61 / Spearman ρ=+0.63(方向与「越接近 frontier 越易被攻破」的预测相反),作为 §0 收敛结论的第三条支撑。但这条证据比前两条更薄:仅用 depth 轴 8 个 cell 时相关性本身不显著(r=+0.58,n.s.),是混入 distractor 轴那 3 个 benign_rate 几乎不变(0.75/0.75/0.83)的低方差点,才把混池后的 p 值压到边缘显著(≈0.05);文档自己也只定性为「suggestive, not conclusive」,没有过度声称,这点值得肯定。**关键的是**:三次同日追加(§1b/§2c/§2d)里,两次是深挖同一批数据的新角度、一次是补一条统计薄弱的新轴,没有一次是上两轮就建议、优先级理应最高的「换注入面(wall→soft surface)」原型——这个建议现在已经被连续搁置三轮,而继续在「复杂度/相关性」方向上产出第四条证据的边际价值正在明显递减。**2026-08-05 四次新增(同一天第四次追加,findings.md 在同一个 §2c 小节内又加了一个 discrimination 子实验)**:项目把干扰邮件换成 K 封仿冒发件人的近似重复邮件(如 `lin.lee@suzukirobotics-inc.jp` 冒充真实的 `…suzukirobotics.jp`),逼 rift 从「过滤噪声」升级到「判别真伪」。结果同样是负:K=0/60/150 上 benign_rate 0.917→0.833、diversion 0.36/0.36/0.46,无趋势。§0 headline 因此把「两条独立复杂度轴」改写成「三条」(depth、干扰密度、判别力),收尾一句「rift is robust to three independent complexity axes」。但这条子实验的证据比 distractor 变体更薄:完全没有报告 n_admissible(distractor 好歹给了 11 和逐 K 分子)、没有 Wilson CI、没有原始数据文件;更值得注意的是文档自己暴露了一个基线不稳问题——同一批 12 个任务的 K=0 基线,在 distractor 探测里是 0.75,在这次 confusable 探测里是 0.917,相差 0.167,只用「~±0.15 的跑间方差」带过,而这个方差本身是从两次探测的单一差值反推出来的,不是重复测量估出来的。四次同日追加里累计已经收敛出四条独立证据(depth 轴、distractor 轴、discrimination 轴、within-victim 相关性),但连续三轮建议、本轮(第四次)依旧未被采纳的「换注入面(wall→soft surface)」pivot——这个反复搁置的模式本身现在比任何单条新证据都更值得关注,详见项目索引「需要你注意的」#7 第四次更新、新增 #11。**2026-08-05 五次新增(同一天第五次追加,仍在 §2c 内,但性质变了)**:这次没有再加一条复杂度子实验,而是回头处理另一条一直悬着的卡点——「第二 victim 到底堵在哪」。项目把探针参数化(`PROBE_MODEL/DEPTH/PARALLEL`)后,正式在 gemini-2.5-flash-lite 上跑了一次 cross-victim 尝试:先确认这档 victim 对简单间隔调用可用(8/8 成功),拿到一个干净 cell(depth-1、K=0:benign 0.33,n_admissible 3/6,与既有「弱 victim」定性一致),但往上扩 K 直接撞上免费层**每日**配额上限——K=100 让模型「崩溃」(3/6,文档写的原因是笼统的「context/rate」),换回 K=60 重跑 8 条验证,结果 0/8 全部不可判定,归因于「两次 agentic 跑法已耗光每日配额」。结论是这条路径「纯粹卡在付费配额上,不是工具问题,harness 已就绪」——但 K=100 那次「崩溃」到底是限流还是上下文溢出没有拆开,和配额耗尽一起打包成同一个「not a tooling gap」结论,有过度合并的风险:如果实际是上下文溢出,加钱买配额并不能解决,需要先调低这档 victim 的 K 上限。积极的一面是:这是四次同日「复杂度轴」追加之后,第一次回头处理另一条真实卡点,而不是继续在同一个方向加证据;但已经建议了四轮的「换注入面」pivot,这第五次依旧没有被碰,详见项目索引「需要你注意的」#7 第五次更新、新增 #12。
+- **下一步**：①（最高优先级,具体可执行,过去四轮已建议、本轮——findings §2c 追加的
+  cross-victim 尝试——依然未被采纳,这是第五次搁置,别再拖）把「换注入面(wall→soft
   surface)」的原型跑出来:复用现成的 exfiltration/unauthorized_action 语料(5 个 depth、
   n_admissible 31/15 都已就绪,不用重新生成),把固定注入从「直接把有害动作要求放进任务
   本身」改成「把同样的有害要求 poison 进 victim 会读的记录」(参照 avo-redteam 的
@@ -50,14 +50,26 @@
   三档各自的 n_admissible、diversion 的分子分母、Wilson CI 三项,再决定是否正式引用;
   同时要么把 K=0 基线重复跑几次,实际测出「~±0.15 跑间方差」这个数字(目前只是从
   distractor 探测的 0.75 和这次的 0.917 两个点反推出来的),要么在下游引用这条结果时
-  明确注明这个基线差异未经量化验证,不要让读者误以为方差已经被测过
+  明确注明这个基线差异未经量化验证,不要让读者误以为方差已经被测过;
+  ⑦（本轮新增,机会性,非阻塞)fork 选项 (b)(换一个真正弱的 victim)现在有了一次实际
+  cross-victim 尝试:gemini-2.5-flash-lite 探针参数化(`PROBE_MODEL/DEPTH/PARALLEL`)后
+  确认这档 victim 简单调用可用(8/8 成功)、拿到一个干净 cell(depth-1/K=0,benign 0.33,
+  n_adm 3/6),但扩大 K 直接撞上免费层每日配额上限,约 2 次 agentic 跑法即耗尽。如果后续
+  能拿到付费 Gemini key,这条路径可以直接重新尝试,不需要再摸索基础设施;但复测前应先
+  单独确认 K=100 那次「崩溃」的真实原因(文档写的是笼统的「context/rate」,没拆开是限流
+  还是上下文溢出)——如果是上下文溢出,加钱买配额解决不了,需要先把这档 victim 的 K 上限
+  调低或换成检索式摘要。这条优先级低于①,是「外部条件具备就顺手做」,不是「现在就该主动
+  申请付费 key」
 - **卡点**：depth 轴、distractor-density 轴、discrimination 轴、以及 within-victim
-  相关性检验(§2d)四条证据都收敛到同一个负结果,项目下一步依赖一个连续三轮建议、但连本轮
-  (第四次)仍未被执行的转向——从「继续在复杂度/相关性方向加证据」切到「换注入面(wall→soft
-  surface)」;换 victim 这条路三个候选(GPT/Gemini/Meta)当前全部基础设施受阻,选择实质上
-  收窄到「换注入面」这一条最具体可执行的路;另外 `rtg-capsec` 分支目前只推到备份 remote
-  `vaibackup`,canonical origin(`Virtue-AI`)缺 `id_ed25519_virtueai` key,这个访问单点
-  没有变化
+  相关性检验(§2d)四条证据都收敛到同一个负结果,项目下一步依赖一个连续四轮建议、但连本轮
+  (第五次,本轮是 cross-victim 尝试)仍未被执行的转向——从「继续在复杂度/相关性方向加证据」
+  切到「换注入面(wall→soft surface)」;换 victim 这条路三个候选(GPT/Gemini/Meta)短期内
+  仍然都走不通,但本轮 cross-victim 尝试把原因拆清楚了——GPT/Meta 是真正的基础设施故障
+  (网关崩溃/500),Gemini 现在明确是免费层每日配额太紧(约 2 次 agentic 跑法耗尽),harness
+  本身已确认可用,原则上"花钱能解";三条路径实质上仍然收窄到「换注入面」这一条最具体可执行
+  的路,但 Gemini 这条如果拿到付费 key 可以直接重新尝试,不再需要额外排障;另外 `rtg-capsec`
+  分支目前只推到备份 remote `vaibackup`,canonical origin(`Virtue-AI`)缺
+  `id_ed25519_virtueai` key,这个访问单点没有变化
 - **更新**：2026-08-05
 - **文档索引**：[projects/capsec-strain-invariance/_INDEX.md](projects/capsec-strain-invariance/_INDEX.md)
 
@@ -103,6 +115,19 @@
   反复搁置的模式本身现在比任何单条新证据都更值得关注。已记入索引「需要你注意的」新增 #11,
   并在 #2、#7(跨项目提示)、决策记录(depth 是唯一自变量、Wilson CI 规则)各追加了第四次
   更新。
+- 2026-08-05(同一天第五次追加)—— findings.md 再追加,仍在同一个 §2c 小节里,但这次
+  性质不一样:不是新增复杂度子实验,而是回头处理另一条一直悬着的卡点——「第二 victim
+  到底堵在哪」。项目把探针参数化(`PROBE_MODEL/DEPTH/PARALLEL`)后,正式在
+  gemini-2.5-flash-lite 上跑了一次 cross-victim 尝试:先确认这档 victim 对简单间隔调用
+  可用(8/8 成功),拿到一个干净 cell(depth-1/K=0,benign 0.33,n_adm 3/6,与既有「弱
+  victim」定性一致),但往上扩 K 直接撞上免费层每日配额上限——K=100 让模型「崩溃」(3/6,
+  文档写的原因是笼统的「context/rate」),换回 K=60 重跑 8 条验证,结果 0/8 全部不可判定,
+  归因于「两次 agentic 跑法已耗光每日配额」。结论是「纯粹卡在付费配额上,不是工具问题,
+  harness 已就绪」——但 K=100 那次「崩溃」到底是限流还是上下文溢出没有拆开,和配额耗尽
+  一起打包成同一个结论有过度合并的风险。积极的一面是:这是四次同日「复杂度轴」追加之后,
+  第一次回头处理另一条真实卡点,而非继续在同一个方向加证据;但已经建议了四轮的「换注入面」
+  pivot,这第五次依旧没有被碰。已记入索引「需要你注意的」新增 #12,并在 #3、#7(跨项目
+  提示)、决策记录(depth 是唯一自变量)各追加了第五次更新。
 
 </details>
 
