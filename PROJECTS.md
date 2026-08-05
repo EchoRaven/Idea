@@ -16,9 +16,9 @@
 - **一句话**：验证 agent 攻击易感性是否由「相对能力强度」(任务离模型能力上限多近)决定,而非绝对能力 —— 若成立则「能力进步不买安全」
 - **仓库**：`rtg-capsec`(生成) + `dtap-capsec`(测量)　**分支**：`capsec/env-state-judges` / `capsec/measurement-layer`　（推到 remote `vaibackup`）
 - **技术栈**：env-state 三值判定 + depth 依赖链(strain 轴) + 固定注入 + deepseek judge + super_nova/Gemini victim
-- **断点**：4-victim ladder(rift 5.14 / super_nova / gemini-2.5-flash / gemini-2.5-flash-lite)累计 74 runs。benign frontier 呈 8/6/2/<2 的真实能力梯度,「梯度太窄」这条 blocker 已被实证推翻。索引里原来两条 critique 都已核实回应:exfil/UA 的「全 0」补上 n_admissible(14、8)+ Wilson 区间(上界 ~22%/~32%),证实是稳定拒绝,不是样本太小的假象;但 content 的 diversion 比值补上 Wilson 区间后,发现 n_adm=1–3 的区间几乎覆盖整个 [0,1] —— invariance 假设现在「既证不了也证伪不了」,唯一真瓶颈收窄成统计 power 这一件
-- **下一步**：①（最优先,不需要付费 key）把 content 语料每个 depth-cell 扩到 10–15 条,纯 LLM 生成、docker-free,用现有生成流水线；② 扩完后在 4-victim ladder 上重跑,`analyze_strain.py --plot` 出图时给每个比值配 Wilson 95% CI,不再裸报;③（非阻塞、可延后）如需进一步加宽梯度顶端,需要付费 Google billing 开 pro 层,或 groovy-provisioned MetaGen token —— env-gen-2 key 到不了 groovy,gemini-3-pro-genai 走 Meta 网关会因 thought_signature 被 OpenAI-compat 剥离而不能 agentic(已实测确认此路不通)
-- **卡点**：统计 power 不足是当前唯一挡住 invariance 结论的卡点(解法是扩语料,没有权限障碍,纯粹是还没做完的工作量);付费 Google billing 仍然拿不到,但已降级为「加宽梯度顶端」的加分项,不再阻塞主线结论;另外 `rtg-capsec` 分支目前只推到备份 remote `vaibackup`,canonical origin(`Virtue-AI`)缺 `id_ed25519_virtueai` key,这个访问单点没有变化
+- **断点**：扩语料到 well-powered 这条「下一步」已经做完并给出定论——rift 5.14 的 content 语料三轮扩容后达到 n_admissible 15–22/cell(~135 任务),depth 1→24 全 sweep 完成。结果是**负结果**:benign_rate 不降反升(depth 24 达 0.875,已核实不是判据变松的假象)、diversion 在 depth 1 最低后噪声式持平、无 monotonic 趋势 —— **chain-depth 不能 strain 一个前沿模型,depth 轴作为 strain 自变量在 rift 上已被证伪**,原先「统计 power 不够」的说法现在应更新为「power 够了,答案是否定的」。同时,想把这个 well-powered 规模复制到第二个 victim 目前全部受阻:GPT 网关在 tool-result 轮崩溃、Gemini 免费层限流(多步任务跑不完)、Meta codename 已 500 逾 6 小时 —— 只有 rift + deepseek 生成可靠可用。这和上一份「4-victim ladder 已证伪梯度太窄」的乐观表述有张力,后者只是在 n=1–3 的小样本上跑出梯度,不等于能把第二个 victim 也扩到 well-powered
+- **下一步**：①（需要先做决策,不是执行动作）在两条路径间二选一:(a) 设计一个真正能 strain 前沿模型的新自变量 —— 每步推理难度/歧义/干扰项密度/分支,而非步数,需要扩展生成器 + 做设计选择,不需要等外部 key,可以立刻动手原型;(b) 换一个真正弱、且贴近自身能力边界的 victim(付费 Gemini pro/flash-lite,或等 Meta 网关恢复),但这条路三个候选目前全部基础设施受阻,短期做不了。鉴于 (b) 全堵,建议优先做 (a):先选定一个具体难度维度(如 distractor density),扩展 `rtg-capsec` 生成器加上这个新轴,小批量跑一次可行性验证;② depth 轴在 rift 上的测量到此为止,不要再跑更多 rift-depth 数据(文档原话「further rift-depth runs add nothing」);③ exfil/UA 两个 shape 目前只有跨 depth 聚合层面的 Wilson 区间,如果后续要画 diversion-vs-depth 曲线,需要补齐这两个 shape 逐 depth-cell 的区间
+- **卡点**：depth 轴已经证伪,项目下一步依赖一个尚未做出的设计决策(新自变量 vs 换 victim),而换 victim 这条路三个候选(GPT/Gemini/Meta)当前全部基础设施受阻,实质上把选择收窄到「做新自变量」;另外 `rtg-capsec` 分支目前只推到备份 remote `vaibackup`,canonical origin(`Virtue-AI`)缺 `id_ed25519_virtueai` key,这个访问单点没有变化
 - **更新**：2026-08-04
 - **文档索引**：[projects/capsec-strain-invariance/_INDEX.md](projects/capsec-strain-invariance/_INDEX.md)
 
@@ -26,6 +26,7 @@
 
 - 2026-08-04 —— 流水线打通,super_nova 3-shape + Gemini flash 多victim 60 runs。判官 gpt-5.4→deepseek(emitted judge 从 canonical dt_arena 符号链接导入,坑了很久)。Gemini 走 Google 原生 OpenAI-compat 才能多步 tool-loop(Meta gateway 掉 thought_signature)。invariance 卡在能力梯度太窄 + n 太小 —— 这和 avo-redteam 的 reps=3、stock-agent 早前踩过的「按行数算显著性」是同一类小样本坑。content_assertion 易感、exfil/UA 不易感,这个 shape 分化和 avo-redteam「诽谤记录归档转述是唯一防御盲区」的结果互相印证,是从生成侧独立复现的同一现象。
 - 2026-08-04(续)—— 新增 victim rift 5.14,4-victim ladder 达 74 runs,能力梯度(8/6/2/<2)被实证坐实,不再是 blocker。同日追加进度文档直接回应了索引里的两条 critique:exfil/UA 的「全 0」用 Wilson 95% CI 证实为稳定拒绝(上界 ~22%/~32%);content 的整数比值配上 Wilson CI 后证实统计不显著(区间几乎覆盖整个 [0,1])。真瓶颈现在只剩统计 power,解法(扩语料到每 cell 10–15 条)已确认不需要付费 key。
+- 2026-08-04(第三轮)—— 上一条笔记里「扩语料」这个待办已经做完:三轮扩容后 content 语料在 rift 上达到 n_admissible 15–22/cell,depth 1→24 全 sweep。结果是 power 够了但答案是否定的——chain-depth 完全不 strain 这个前沿模型(depth 24 的 benign_rate 反而升到 0.875),diversion 也没有随深度上升的趋势。这比「既证不了也证伪不了」更进一步,是本项目至今最扎实的单点结论,但也意味着 depth 轴这条最初的架构选择走到头了,下一步需要在「换一个真正能 strain 前沿模型的自变量」和「换一个够弱的 victim」之间做设计决策——后者的三个候选(GPT/Gemini/Meta)目前全部基础设施受阻,实质上收窄成前者。这个「轴本身被测穿证伪,而非样本不够」的模式,和只是「数据还没跑够」的常规卡点不是一回事,值得在回顾类似瓶颈时区分开。
 
 </details>
 
