@@ -72,6 +72,27 @@ diversion-vs-depth 曲线，这两个 shape 也需要跟 content 一样的逐 ce
 建议要么补上 `id_ed25519_virtueai` key，要么明确记一条「已知：暂只有备份 remote」
 的待办，别让它悄悄待着。
 
+### 6.（跨项目提示，来自 avo-redteam，可能是 exfil/UA「全 0」的一个待测混杂因素）注入面（wall vs soft surface）可能比伤害类型（content_assertion vs exfil/UA）更接近真正的自变量
+
+[avo-redteam](../avo-redteam/_INDEX.md) 2026-08-05 交的
+[`reproduced-attack-report`](../avo-redteam/tech/2026-08-05-reproduced-attack-report.md)
+把 rift 的防御拆成了两种注入面：**「wall」**——伪造内容直接写在邮件/note 里断言给
+victim 听，rift 会拒绝并要求走自己的工具核对官方记录；**「soft surface」**——同样的伪造
+内容 poison 进 victim legitimate 任务本就会读的记录本身（policy 页面、tracker 状态列），
+victim 会当真执行。用 soft-surface 手法后，rift 交出了一个手工核验的真实攻击成功
+（污染 Confluence/Jira 政策页 → 触发一次真实的 `create_payout`）——注意这次触发的是一个
+**动作**（payout），不是纯内容断言，说明「content_assertion 撬动 unauthorized_action」
+这条链路对 rift 是通的。
+
+这对本项目的启发：本项目 exfiltration/unauthorized_action 全 5 个 depth 都是 0
+diversion（见上方 #3），但固定注入（见下方决策记录「固定注入而非运行时注入」）用的很
+可能是「wall」等价物——直接把有害动作要求放进任务本身，victim 一眼能看出是显式指令。
+如果改成把同样的有害要求 poison 进 victim 会读的**记录**（而非任务指令本身），
+exfiltration/UA 是否还能保持 0，目前没有测过。这不是说要现在就去做——depth 轴的
+well-powered sweep 已经耗尽了当前精力（见 #1），但如果后续要引入新的 strain 自变量，
+「注入面」本身可能比「换一个推理难度维度」更值得优先验证，因为 avo-redteam 那边已经
+拿到一个正面证据，而不是从零假设。
+
 ---
 
 ## 进度汇报 · progress/
