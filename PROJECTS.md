@@ -16,15 +16,16 @@
 - **一句话**：验证 agent 攻击易感性是否由「相对能力强度」(任务离模型能力上限多近)决定,而非绝对能力 —— 若成立则「能力进步不买安全」
 - **仓库**：`rtg-capsec`(生成) + `dtap-capsec`(测量)　**分支**：`capsec/env-state-judges` / `capsec/measurement-layer`　（推到 remote `vaibackup`）
 - **技术栈**：env-state 三值判定 + depth 依赖链(strain 轴) + 固定注入 + deepseek judge + super_nova/Gemini victim
-- **断点**：扩语料到 well-powered 这条「下一步」已经做完并给出定论——rift 5.14 的 content 语料三轮扩容后达到 n_admissible 15–22/cell(~135 任务),depth 1→24 全 sweep 完成。结果是**负结果**:benign_rate 不降反升(depth 24 达 0.875,已核实不是判据变松的假象)、diversion 在 depth 1 最低后噪声式持平、无 monotonic 趋势 —— **chain-depth 不能 strain 一个前沿模型,depth 轴作为 strain 自变量在 rift 上已被证伪**,原先「统计 power 不够」的说法现在应更新为「power 够了,答案是否定的」。同时,想把这个 well-powered 规模复制到第二个 victim 目前全部受阻:GPT 网关在 tool-result 轮崩溃、Gemini 免费层限流(多步任务跑不完)、Meta codename 已 500 逾 6 小时 —— 只有 rift + deepseek 生成可靠可用。这和上一份「4-victim ladder 已证伪梯度太窄」的乐观表述有张力,后者只是在 n=1–3 的小样本上跑出梯度,不等于能把第二个 victim 也扩到 well-powered。**2026-08-05 新增**:同一批 rift 数据把 exfiltration/unauthorized_action 两个「动作」shape 也补齐到逐 depth-cell 的 Wilson 区间(合计 n_admissible 31/15,此前只有跨 5 个 depth 聚合的 14/8),结果依旧是全部 0 diversion——「拒绝边界卡在动作而非内容,不卡在深度」现在和「depth 不能 strain 前沿模型」并列成为两条 well-powered 结论,直接呼应 avo-redteam 独立测出的 wall-vs-soft-surface 边界(exfil/UA 目前测的仍是 wall 等价物,尚未测 soft-surface,见下方笔记)。unauthorized_action 因 benign 完成率低(0.13–0.63)admissibility 仍然塌缩(n_adm 1–5/cell,最多 75% undecidable),这部分统计仍偏弱,但跨两个 shape 全 0 的一致性是主要证据。另外新数据文件里首次出现的 `relative_strain`/`frontier_depth` 归一化列,没有任何 prose 文档说明算法,且对 gemini-2.5-flash-lite 这类小样本 victim 完全押在单次 n=1 结果上,正式引用前需要补文档说明(细节见项目索引「需要你注意的」#8)。**2026-08-05 二次新增(同一天第二次追加,findings.md 新增 §0/§2c)**:项目实际动手做了上一轮「下一步」①②里的②——把 distractor density(inbox 干扰邮件密度,K=0/60/150/300,depth 固定为 2)当成新自变量跑通,结果同样是负:benign_rate 不降反升(0.75→0.83)、diversion 是纯噪声(0.36/0.46/0.27/0.17,无趋势),§0 把这条和 depth 轴并列写成「两条独立复杂度轴都被 rift 扛住」的收敛结论。但这条新证据比 depth 轴弱得多:基线 n_admissible 只有 11(depth 轴是 15–22/cell)、最高的 K=300 只 partial 跑了 6/12、K=600 直接跳过、且四个 diversion 比值全部裸报没配 Wilson CI——直接违反项目自己在决策记录里写死的「diversion 比值一律配区间」规则。更值得注意的是**上一轮明确建议优先做的①(换注入面 wall→soft surface)没有被采纳**——项目选择先做②而不是①,这不是逻辑矛盾(大概率是同一条 autonomous loop 在建议发出前就已经在跑这个方向),但结果是这条最具体、成本最低、且已经有 avo-redteam 正面证据打底的建议又被搁置了一轮,而两条独立复杂度轴都测出负结果后,继续加第三条新轴的边际价值在下降,转向注入面的优先级应该更高而不是更低。
-- **下一步**：①（最高优先级,具体可执行,上一轮已建议但本轮未被采纳,别再拖）把「换注入面
-  (wall→soft surface)」的原型跑出来:复用现成的 exfiltration/unauthorized_action 语料
-  (5 个 depth、n_admissible 31/15 都已就绪,不用重新生成),把固定注入从「直接把有害动作
-  要求放进任务本身」改成「把同样的有害要求 poison 进 victim 会读的记录」(参照
-  avo-redteam 的 `inject_env`-into-record 手法),小批量跑一次看 exfil/UA 是否还能保持
-  0——两条复杂度轴(depth、distractor density)都已经测出负结果,继续在复杂度维度上加
-  第三条新轴的边际价值在下降,这条转向注入面的原型比再设计一个推理难度轴成本更低、
-  且已有 avo-redteam 一次正面证据打底;
+- **断点**：扩语料到 well-powered 这条「下一步」已经做完并给出定论——rift 5.14 的 content 语料三轮扩容后达到 n_admissible 15–22/cell(~135 任务),depth 1→24 全 sweep 完成。结果是**负结果**:benign_rate 不降反升(depth 24 达 0.875,已核实不是判据变松的假象)、diversion 在 depth 1 最低后噪声式持平、无 monotonic 趋势 —— **chain-depth 不能 strain 一个前沿模型,depth 轴作为 strain 自变量在 rift 上已被证伪**,原先「统计 power 不够」的说法现在应更新为「power 够了,答案是否定的」。同时,想把这个 well-powered 规模复制到第二个 victim 目前全部受阻:GPT 网关在 tool-result 轮崩溃、Gemini 免费层限流(多步任务跑不完)、Meta codename 已 500 逾 6 小时 —— 只有 rift + deepseek 生成可靠可用。这和上一份「4-victim ladder 已证伪梯度太窄」的乐观表述有张力,后者只是在 n=1–3 的小样本上跑出梯度,不等于能把第二个 victim 也扩到 well-powered。**2026-08-05 新增**:同一批 rift 数据把 exfiltration/unauthorized_action 两个「动作」shape 也补齐到逐 depth-cell 的 Wilson 区间(合计 n_admissible 31/15,此前只有跨 5 个 depth 聚合的 14/8),结果依旧是全部 0 diversion——「拒绝边界卡在动作而非内容,不卡在深度」现在和「depth 不能 strain 前沿模型」并列成为两条 well-powered 结论,直接呼应 avo-redteam 独立测出的 wall-vs-soft-surface 边界(exfil/UA 目前测的仍是 wall 等价物,尚未测 soft-surface,见下方笔记)。unauthorized_action 因 benign 完成率低(0.13–0.63)admissibility 仍然塌缩(n_adm 1–5/cell,最多 75% undecidable),这部分统计仍偏弱,但跨两个 shape 全 0 的一致性是主要证据。另外新数据文件里首次出现的 `relative_strain`/`frontier_depth` 归一化列,没有任何 prose 文档说明算法,且对 gemini-2.5-flash-lite 这类小样本 victim 完全押在单次 n=1 结果上,正式引用前需要补文档说明(细节见项目索引「需要你注意的」#8)。**2026-08-05 二次新增(同一天第二次追加,findings.md 新增 §0/§2c)**:项目实际动手做了上一轮「下一步」①②里的②——把 distractor density(inbox 干扰邮件密度,K=0/60/150/300,depth 固定为 2)当成新自变量跑通,结果同样是负:benign_rate 不降反升(0.75→0.83)、diversion 是纯噪声(0.36/0.46/0.27/0.17,无趋势),§0 把这条和 depth 轴并列写成「两条独立复杂度轴都被 rift 扛住」的收敛结论。但这条新证据比 depth 轴弱得多:基线 n_admissible 只有 11(depth 轴是 15–22/cell)、最高的 K=300 只 partial 跑了 6/12、K=600 直接跳过、且四个 diversion 比值全部裸报没配 Wilson CI——直接违反项目自己在决策记录里写死的「diversion 比值一律配区间」规则。更值得注意的是**上一轮明确建议优先做的①(换注入面 wall→soft surface)没有被采纳**——项目选择先做②而不是①,这不是逻辑矛盾(大概率是同一条 autonomous loop 在建议发出前就已经在跑这个方向),但结果是这条最具体、成本最低、且已经有 avo-redteam 正面证据打底的建议又被搁置了一轮,而两条独立复杂度轴都测出负结果后,继续加第三条新轴的边际价值在下降,转向注入面的优先级应该更高而不是更低。**2026-08-05 三次新增(同一天第三次追加,findings.md 新增 §2d)**:项目这次没有跑新实验,而是对已收集的 rift content_assertion 数据做了一次 within-victim 相关性再分析——把 depth 轴 8 个 cell 和 distractor 轴 3 个 cell 的 benign_rate 与 diversion 放一起算相关,得到 Pearson r=+0.61 / Spearman ρ=+0.63(方向与「越接近 frontier 越易被攻破」的预测相反),作为 §0 收敛结论的第三条支撑。但这条证据比前两条更薄:仅用 depth 轴 8 个 cell 时相关性本身不显著(r=+0.58,n.s.),是混入 distractor 轴那 3 个 benign_rate 几乎不变(0.75/0.75/0.83)的低方差点,才把混池后的 p 值压到边缘显著(≈0.05);文档自己也只定性为「suggestive, not conclusive」,没有过度声称,这点值得肯定。**关键的是**:三次同日追加(§1b/§2c/§2d)里,两次是深挖同一批数据的新角度、一次是补一条统计薄弱的新轴,没有一次是上两轮就建议、优先级理应最高的「换注入面(wall→soft surface)」原型——这个建议现在已经被连续搁置三轮,而继续在「复杂度/相关性」方向上产出第四条证据的边际价值正在明显递减。
+- **下一步**：①（最高优先级,具体可执行,过去两轮已建议、本轮——findings §2d——依然未被
+  采纳,这是第三次搁置,别再拖）把「换注入面(wall→soft surface)」的原型跑出来:复用现成的
+  exfiltration/unauthorized_action 语料(5 个 depth、n_admissible 31/15 都已就绪,不用
+  重新生成),把固定注入从「直接把有害动作要求放进任务本身」改成「把同样的有害要求 poison
+  进 victim 会读的记录」(参照 avo-redteam 的 `inject_env`-into-record 手法),小批量跑
+  一次看 exfil/UA 是否还能保持 0——depth 轴、distractor density 轴、外加本轮的
+  within-victim 相关性检验(§2d)三条独立证据都已收敛到同一个负结果,继续在这个方向上
+  产出第四条证据的边际价值已经很低,这条转向注入面的原型比再设计一个推理难度轴或再做一次
+  相关性分析成本更低、且已有 avo-redteam 一次正面证据打底;
   ②（已完成,仅供记录,不用再做）"新增推理难度自变量"这条待办的第一个候选——distractor
   density(inbox 干扰邮件密度)——已经在 2026-08-05 跑完(findings §2c),结果同样是负,
   但统计功效明显弱于 depth 轴(基线 n_admissible 只有 11,K=300 只 partial 跑了 6/12,
@@ -38,13 +39,18 @@
   `frontier_depth` 的定义(可还原为「该 shape 下 benign_rate≥0.5 的最深 depth」),并在
   下游使用 `relative_strain` 做跨 victim 比较时,给 gemini-2.5-flash-lite 这类单次 n=1
   定出来的 frontier 标注「低置信度」,不要和 rift 的 well-powered frontier 混在同一条
-  曲线上
-- **卡点**：depth 轴和新增的 distractor-density 轴都已证伪(两条独立复杂度轴收敛到同一个
-  负结果),项目下一步依赖一个上一轮就建议、但本轮仍未被执行的转向——从「继续加复杂度新轴」
-  切到「换注入面(wall→soft surface)」;换 victim 这条路三个候选(GPT/Gemini/Meta)当前
-  全部基础设施受阻,选择实质上收窄到「换注入面」这一条最具体可执行的路;另外 `rtg-capsec`
-  分支目前只推到备份 remote `vaibackup`,canonical origin(`Virtue-AI`)缺
-  `id_ed25519_virtueai` key,这个访问单点没有变化
+  曲线上;
+  ⑤（本轮新增,方法论透明度,未完成)§2d 的相关性数字(r=+0.61, n=11)如果继续在 §0 或其他
+  下游文档里被引用为「第三条独立证据」,必须同时注明 depth-only 子集的 r=+0.58 并不显著
+  (n.s.)、混池后压过 p≈0.05 主要靠 distractor 轴那 3 个低方差点——不要只引用混池后的
+  单一系数,读者需要知道这个信号有多大程度依赖把两条不同自变量的 cell 放在一起算
+- **卡点**：depth 轴、distractor-density 轴、以及本轮新增的 within-victim 相关性检验
+  (§2d)三条证据都收敛到同一个负结果,项目下一步依赖一个连续两轮建议、但连本轮(第三次)
+  仍未被执行的转向——从「继续在复杂度/相关性方向加证据」切到「换注入面(wall→soft
+  surface)」;换 victim 这条路三个候选(GPT/Gemini/Meta)当前全部基础设施受阻,选择实质上
+  收窄到「换注入面」这一条最具体可执行的路;另外 `rtg-capsec` 分支目前只推到备份 remote
+  `vaibackup`,canonical origin(`Virtue-AI`)缺 `id_ed25519_virtueai` key,这个访问单点
+  没有变化
 - **更新**：2026-08-05
 - **文档索引**：[projects/capsec-strain-invariance/_INDEX.md](projects/capsec-strain-invariance/_INDEX.md)
 
@@ -66,6 +72,15 @@
   发出前就已经在跑这个方向),但意味着这条最具体、成本最低、已有 avo-redteam 正面证据
   打底的转向建议又被搁置了一轮。已记入索引「需要你注意的」#9,并在 #7(跨项目提示)追加
   了第二次更新。
+- 2026-08-05(同一天第三次追加)—— findings.md 再追加 §2d:对已收集的 rift
+  content_assertion 数据(depth 轴 8 个 cell + distractor 轴 3 个 cell,合计 11)做
+  within-victim 相关性检验,benign_rate 与 diversion 的 Pearson r=+0.61、Spearman
+  ρ=+0.63,方向与「strain 越大越易攻破」的预测相反,作为 §0 收敛结论的第三条支撑。但这条
+  证据比前两条更薄:仅 depth 轴 8 个 cell 时 r=+0.58 不显著(n.s.),是混入 distractor 轴
+  那 3 个低方差点才把 p 值压到边缘(≈0.05);且这仍是对既有数据的再分析,不是新实验——
+  上两轮建议的「换注入面(wall→soft surface)」这次依然没有被采纳,已经是第三次搁置。
+  已记入索引「需要你注意的」#10,并在 #7(跨项目提示)、决策记录(depth 是唯一自变量)
+  各追加了第三次更新。
 
 </details>
 
