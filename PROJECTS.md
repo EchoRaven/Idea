@@ -68,15 +68,21 @@
 - **文档索引**：[projects/stock-agent/_INDEX.md](projects/stock-agent/_INDEX.md)
 - **技术栈**：Python 3.12 / FastAPI / FastMCP / SQLAlchemy+SQLite / uv、Gemini、
   Next.js + TypeScript + Tailwind、yfinance + finnhub + SEC EDGAR、富途 OpenD（默认关）
-- **断点**：M1–M7 全部完成（决策核心、闸门、四模式、11 页 UI、评测体系、富途适配器），
-  ~164 commits / 785 后端离线测试。**M8「让学习闭环真正产生信号」是唯一还开着的口子**，
-  且只停在「方向」阶段：现在只有平仓才写复盘，模拟盘几乎不平仓，
-  所以 agent 至今几乎没从自己的交易里学到东西 —— 记忆/复盘/因子挖掘整条线建好了但没通电。
-- **下一步**：跑 `scripts/replay_eval.py`，用 `--end-date` 跨多个反向行情区间批量重放
-  screen→committee，把产出的「决策 + 结果」样本喂回评测与记忆，先把 M8 的样本荒解决
-- **卡点**：「置信度能否预测收益」目前不显著、尚未证实 —— 这是项目最大的开放性风险，
-  而它的答案依赖 M8 先产出足够独立样本。**所以 M8 应当优先于 M9**（M9 要把该股历史战绩
-  喂进委员会，依赖的正是 M8 生产的数据）
+- **断点**：M1–M7 全部完成，~170 commits / 785 后端离线测试。M8 已从「方向」推进到
+  「机制通电+测过」：`replay_loop.py` 在隔离库跑通完整 `run_trade_cycle`，25 天历史重放
+  产出 2 笔平仓 → 2 条复盘写进记忆；`learning_ab.py` 做 DiD（有复盘 AMD/JPM vs 无复盘
+  AAPL/MSFT）测出委员会对自己复盘的行为响应 **DiD≈0，几乎无响应**。置信度→收益显著性
+  检验也用三区间够样本重跑（39 买入/22 决策日）完成，结论口径从「样本不足」升级为
+  「测了，不显著」。M9 因此被重新定义：瓶颈不是数据管道（复盘已经喂进 memory_context），
+  是委员会没有有效权衡它 —— 是 prompt/框定问题。
+- **下一步**：照 ROADMAP §M9 的方案改 committee prompt——委员会读到某票的 `trade_review`
+  记忆时，要求 `bear_rebuttal`/理由里显式回应"上次这只票亏了 X%，这次买入的额外理由是什么"，
+  不能只是把复盘塞进 memory_context 就算完。改完立刻用 `scripts/learning_ab.py` 重跑 DiD，
+  看是否从 ≈0 转负（负值=委员会读到亏损复盘后变谨慎）—— 这把尺子已经现成，不需要再造。
+- **卡点**：DiD≈0 目前只测了 1 轮、2 笔平仓，且 treatment/control 完全按标的划分（AMD/JPM
+  有复盘、AAPL/MSFT 没有）——不是随机分组，无法排除"这两只票本来行为就不同"的混杂，文档
+  自己也承认"机制探针非结论"。要让 DiD 结果站得住，得先用 `replay_loop.py` 跑更长窗口/更高
+  换手拿到更多独立平仓样本，且最好让分组方式避免与 memory 状态完全共线。
 - **更新**：2026-08-04
 
 <details><summary>笔记 / 决策记录</summary>
@@ -84,5 +90,10 @@
 - 2026-08-04 —— 收到首批 3 份文档并归档。文档质量很高，PROGRESS §3 把 5 个自造的
   测量缺陷写进了正式文档。其中「显著性按独立观测数而非行数」这条教训可以直接
   搬给 avo-redteam（它的 Δ+1.00 来自 reps=3，缺区间估计），详见索引第 5 条。
+- 2026-08-04（续）—— 收到第二批文档：progress.md/roadmap.md 实质性修订 + 新增
+  overview.md（原 README.md 迁移改名）。核心变化：M8 从「建好没通电」变成「通电且测过」——
+  `replay_loop.py` 实测能产出平仓复盘，但 `learning_ab.py` 的 DiD 检验显示委员会对自己
+  复盘几乎无响应（DiD≈0），且该检验的 treatment/control 完全按标的分组、非随机，混杂未被
+  排除（索引新发现，文档本身没点名）。M9 因此被重新定义为 prompt/框定问题。详见索引第 1 条。
 
 </details>
