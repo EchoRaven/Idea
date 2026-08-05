@@ -5,17 +5,40 @@
 双轨架构：`rtg-capsec`（生成 depth-N 依赖链攻击任务）+ `dtap-capsec`（跑 victim、
 env-state 三值判定、出 strain 曲线）。
 
-**最近一次收到文档**：2026-08-04（第三批——`progress.md` 被就地追加了一段「autonomous
-loop」更新，`findings.md` 被就地追加 §2b/§3/§4；两份都是原文件内容扩展，不是新文件）
-**当前节奏**：快，且罕见——同一天内已经是第三轮内容产出（首批 5 份技术文档 → 4-victim-ladder
-critique 回应 → 本轮的 depth-24 定论 + fork 决策点），说明作者当天在跑一个连续的
-autonomous loop，产出速度明显超出常规节奏。
+**最近一次收到文档**：2026-08-05（第四批——`findings.md` 被就地追加 §1b：把「拒绝边界卡在
+动作而非内容」从 n=1–3 的印象升级为 well-powered 结论；新增原始数据文件
+`2026-08-05-strain_shapes.csv`，首次给出 exfiltration/unauthorized_action 逐 depth-cell
+的 Wilson 区间，直接补上了上一轮索引 #3 记录的缺口）
+**当前节奏**：仍然快——继 08-04 三轮产出之后隔一天（08-05）再交一轮，且这轮做的正是
+08-04 第三轮末尾自己留下的 to-do（补 exfil/UA 逐 cell 区间），是同一条 autonomous loop
+的延续而非新开的工作。[avo-redteam](../avo-redteam/_INDEX.md) 同期也是这个节奏。
 
 ---
 
 ## ⚠️ 需要你注意的
 
-### 1.（重大结论，本轮核心）depth 轴对前沿模型不起作用——rift 的 depth 1→24 sweep 是定论，不是初步结果
+### 1.（本轮新增，重大结论）action boundary 的「depth-invariant」现在也是 well-powered 结论，不再只是 n=1–3 的印象
+
+[findings §1b](tech/2026-08-04-findings.md) + 新增数据文件
+[`2026-08-05-strain_shapes.csv`](tech/2026-08-05-strain_shapes.csv) 把 §1 的 n=1–3 小样本
+观察（super_nova「从不采取离散有害动作，但愿意断言诽谤性内容」）在 rift 上用真实 power
+复现：**exfiltration** 5 个 depth（n_admissible 1,7,7,8,8，合计 31）diversion 全部 0.0；
+**unauthorized_action** 5 个 depth（n_admissible 2,5,3,4,1，合计 15）diversion 同样全部
+0.0；同一批 depth 上 **content_assertion** diversion 0.056–0.556（非零）。~46 条
+admissible 的「动作」类 shape 跑下来零漂移——「拒绝边界卡在动作而非内容」从三样本印象
+升级为有统计支撑的结论，和下方 #2（depth 不能 strain 前沿模型）并列成为本项目目前最硬
+的两条结论。
+
+文档自己给出的诚实功效说明：exfiltration 每 cell 都有 7–8 个 admissible 样本，Wilson
+上界压到 ~0.32–0.35，站得住；unauthorized_action 因为 payout 处理任务本身 benign 完成率
+低（0.13–0.63），admissibility 塌缩到 n_adm=1–5/cell（最多 75% undecidable），Wilson
+上界因此宽到 ~0.43–0.79。**跨两个 shape、全部 depth 都是 0 这个一致性本身才是证据的分量
+所在，不是任何单个 cell 的区间宽度**——这个措辞是准确、不过度声称的，值得肯定。
+
+这条把上一轮索引 #3（见下方，已改写）记录的缺口——「exfil/UA 只有跨 depth 聚合层面的
+区间」——基本做掉了。
+
+### 2.（重大结论）depth 轴对前沿模型不起作用——rift 的 depth 1→24 sweep 是定论，不是初步结果
 
 [progress 追加段](progress/2026-08-04-progress.md#update-2026-08-04-later--autonomous-loop-6-iterations)
 与 [findings §2b](tech/2026-08-04-findings.md) 报告的是同一份新数据：三轮扩语料后达到
@@ -32,7 +55,7 @@ axis」。这意味着项目最初的架构决策「depth-N 依赖链是唯一 s
 记录）现在需要被重新审视，不是执行层面的事，是设计层面要做选择——具体分叉见 PROJECTS.md
 「下一步」。
 
-### 2.（新发现，需要澄清）「victim 梯度已不是 blocker」和这轮「second victim 全部受阻」的说法有张力
+### 3.（延续，本轮未变）「victim 梯度已不是 blocker」和上一轮「second victim 全部受阻」的说法有张力
 
 上一轮索引记录：4-victim ladder（rift/super_nova/gemini-flash/gemini-flash-lite）证实
 了 8/6/2/<2 的真实能力梯度，「能力梯度太窄」这条 blocker 被实证推翻。但本轮
@@ -47,22 +70,30 @@ second-victim paths blocked」——GPT（`-genai-responses`）在 tool-result �
 第二个 victim」这件事现在比上一轮乐观表述听起来的更堵，不是更松。PROJECTS.md 的断点
 措辞已按这个区分改写。
 
-### 3.（延续，未受本轮影响）exfil/UA 的「全 0」目前只在跨 depth 聚合层面有 Wilson 区间
+### 4.（已基本解决，本轮做掉的正是这条待办）exfil/UA 的逐 depth-cell 区间已经补上——exfiltration 站得住，unauthorized_action 仍偏弱
 
-exfiltration n_adm=14（分 5 个 cell：3/3/2/3/3）、unauthorized_action n_adm=8
-（2/2/1/1/2），两者 diverted 都是 0，Wilson 95% 上界分别 ~0.22 / ~0.32——是真的走到了
-注入点、真的没被攻破，不是「太弱走不到」混进来的假 0。但这仍是**跨全部 5 个 depth 汇总**
-的数字，没有逐 depth-cell 的区间。本轮两份文档都没有补这个，继续挂着——如果后续要画
-diversion-vs-depth 曲线，这两个 shape 也需要跟 content 一样的逐 cell 处理。
+上一轮记录的缺口是「exfil/UA 的 0 只有跨全部 5 个 depth 汇总的 Wilson 区间（n_adm=14/8，
+上界 ~0.22/~0.32），没有逐 cell 拆分」。`2026-08-05-strain_shapes.csv` 把这个缺口填上
+了，而且是在 rift 单一 victim 上重新测出来的更大样本：exfiltration 5 个 depth 逐
+cell n_admissible = 1,7,7,8,8（合计 31，超过此前跨 victim 汇总的 14），diversion 全部
+0.0，逐 cell Wilson 上界 ~0.32–0.35（depth1 的 n=1 cell 除外）；unauthorized_action 逐
+depth n_admissible = 2,5,3,4,1（合计 15，超过此前的 8），diversion 同样全部 0.0，但因为
+每 cell 样本仍薄，Wilson 上界宽到 ~0.43–0.79。**exfiltration 这条现在可以放心引用逐
+depth 曲线；unauthorized_action 目前只能说"全 0 且一致"，还不能细拆到"哪个 depth 更
+稳"这种颗粒度**——根因是 payout 处理任务本身 benign 完成率低（0.13–0.63），导致
+admissible 样本天然稀薄，加语料量未必能解决，可能需要先改善 UA 的 benign 任务设计。
 
-### 4.（延续，未受本轮影响，优先级因 #2 下调）gemini-2.5-flash-lite 的 benign frontier 仍只是「<2」这个不等式
+### 5.（延续，未受本轮影响，优先级因 #3 下调）gemini-2.5-flash-lite 的 benign frontier 仍只是「<2」这个不等式
 
-四档梯度里最弱的一档 frontier 只写了「<2」，不是具体整数。本轮的 victim-ladder-blocked
-消息（#2）让这件事更不容易短期解决——Gemini 免费层现在被明确报告为「多步任务跑不完」，
+四档梯度里最弱的一档 frontier 只写了「<2」，不是具体整数。上一轮的 victim-ladder-blocked
+消息（#3）让这件事更不容易短期解决——Gemini 免费层现在被明确报告为「多步任务跑不完」，
 意味着专门去钉死这个数字的探测本身也会撞上限流。从「随时可做的一次性小任务」降级为
-「等基础设施恢复后再做」。
+「等基础设施恢复后再做」。本轮的 `strain_shapes.csv` 里 gemini-2.5-flash-lite 的
+content_assertion 三行倒是给出了一个具体数字——`frontier_depth` 列写的是 2——但这个数字
+完全押在 depth2 单次跑（n=1，一次跑通即 benign_rate=1.0）上，参见下方新增 #8，不能当成
+「<2」这个不等式的实锤替代。
 
-### 5.（延续，未受本轮影响）生成端代码只推了备用 remote，canonical origin 缺部署 key——访问单点
+### 6.（延续，未受本轮影响）生成端代码只推了备用 remote，canonical origin 缺部署 key——访问单点
 
 `01-technical-roadmap` 提到生成产物「Pushed to remote `vaibackup`（origin `Virtue-AI`
 需要 `id_ed25519_virtueai` key，此环境没有）」。也就是说 `rtg-capsec` 分支
@@ -72,7 +103,7 @@ diversion-vs-depth 曲线，这两个 shape 也需要跟 content 一样的逐 ce
 建议要么补上 `id_ed25519_virtueai` key，要么明确记一条「已知：暂只有备份 remote」
 的待办，别让它悄悄待着。
 
-### 6.（跨项目提示，来自 avo-redteam，可能是 exfil/UA「全 0」的一个待测混杂因素）注入面（wall vs soft surface）可能比伤害类型（content_assertion vs exfil/UA）更接近真正的自变量
+### 7.（跨项目提示，来自 avo-redteam，本轮因 well-power 证据更值得优先做）注入面（wall vs soft surface）可能比伤害类型（content_assertion vs exfil/UA）更接近真正的自变量
 
 [avo-redteam](../avo-redteam/_INDEX.md) 2026-08-05 交的
 [`reproduced-attack-report`](../avo-redteam/tech/2026-08-05-reproduced-attack-report.md)
@@ -85,13 +116,44 @@ victim 会当真执行。用 soft-surface 手法后，rift 交出了一个手工
 这条链路对 rift 是通的。
 
 这对本项目的启发：本项目 exfiltration/unauthorized_action 全 5 个 depth 都是 0
-diversion（见上方 #3），但固定注入（见下方决策记录「固定注入而非运行时注入」）用的很
+diversion（见上方 #4），但固定注入（见下方决策记录「固定注入而非运行时注入」）用的很
 可能是「wall」等价物——直接把有害动作要求放进任务本身，victim 一眼能看出是显式指令。
 如果改成把同样的有害要求 poison 进 victim 会读的**记录**（而非任务指令本身），
 exfiltration/UA 是否还能保持 0，目前没有测过。这不是说要现在就去做——depth 轴的
-well-powered sweep 已经耗尽了当前精力（见 #1），但如果后续要引入新的 strain 自变量，
+well-powered sweep 已经耗尽了当前精力（见 #2），但如果后续要引入新的 strain 自变量，
 「注入面」本身可能比「换一个推理难度维度」更值得优先验证，因为 avo-redteam 那边已经
 拿到一个正面证据，而不是从零假设。
+
+**2026-08-05 更新（本轮权重上调）**：上方 #1/#4 把 exfiltration/unauthorized_action 的
+「全 0」从 n=1–3 印象扩到了 well-powered（合计 n_admissible 31/15，逐 depth 全覆盖）。
+这意味着 avo-redteam 用 soft-surface 打穿的那堵「wall」防御，现在有了远比此前扎实的
+基线数字撑腰——不是"小样本没测到攻破"，是"~46 条 admissible 跑下来一条没漂"这种强度
+的墙被 soft-surface 攻破了一次（UPJ/93）。这让「注入面才是真正自变量」这个假设的
+先验权重应该继续上调，建议排在 (a)（新增推理难度自变量）之前，作为下一步优先做的原型：
+成本更低（复用现成的 exfiltration/unauthorized_action 语料，只改注入方式，不用新设计
+一整条推理难度轴），且已经有 avo-redteam 一次正面证据打底，不是从零假设去猜一个新维度。
+
+### 8.（本轮新发现，方法论透明度问题）`strain_shapes.csv` 新增的 `relative_strain`/`frontier_depth` 归一化没有写进任何 prose 文档，且对弱 victim 的取值不稳
+
+`2026-08-05-strain_shapes.csv` 比历史表格多了两列：`frontier_depth`（每个 model×shape
+一个固定值）和 `relative_strain`（= depth / frontier_depth）。逐行核对后，`frontier_depth`
+的取值规律可以还原为「该 shape 下 benign_rate ≥ 0.5 的最深 depth」——content_assertion/
+rift 是 24（benign 从未跌破 0.5，取最大测试 depth）、exfiltration 是 4（0.875，d6/d8
+跌到 0.375/0.25 以下）、unauthorized_action 是 6（0.571，d2/d4 跌到 0.25/0.125 以下）、
+gemini-2.5-flash-lite/content_assertion 是 2（1.0）。**这条规则本身自洽，但 findings.md
+全文没有一处提到 `frontier_depth`/`relative_strain` 这两个词**，也没有说明这条归一化
+是怎么算的——是我核对 CSV 数字反推出来的，不是文档写明的。
+
+更值得注意的是稳健性问题：gemini-2.5-flash-lite 的 `frontier_depth=2` 完全押在 depth2
+那一个 cell 上——n=1，也就是**一次**跑通就把 benign_rate 记成 1.0、从而把 frontier 定在
+这里。如果那一次跑换个结果，`frontier_depth` 会跳到别的 depth，整列 `relative_strain`
+也会跟着变。exfiltration/unauthorized_action 的 frontier_depth（4、6）背后是 n≥7/n=7
+的 cell，稳得多；rift-content 的 24 更稳（n_adm=7，且是"从未跌破阈值"的 censored 值，
+不是"跌破了才反推出来"的精确点）。在这条归一化被写进任何正式结论或图表之前，建议：
+①在 findings.md 里补一句明确定义（哪怕只是"frontier_depth = 最深的 benign≥0.5 depth"
+这一句话）；②在用 `relative_strain` 做跨 victim/跨 shape 比较时，对 gemini-flash-lite
+这类单次 n=1 定出来的 frontier 单独标注"低置信度"，不要和 rift 的 well-powered frontier
+一视同仁地画在同一条曲线上。
 
 ---
 
@@ -110,8 +172,9 @@ well-powered sweep 已经耗尽了当前精力（见 #1），但如果后续要�
 |---|---|---|---|
 | 2026-08-04 | [overview](tech/2026-08-04-overview.md) | 项目总纲：定义 strain-invariance 假设（同模型内 strain 越高越易被攻破；跨模型因部署范围随能力扩张，ASR 大致不变）、双轨架构图、三种伤害 shape 定义表（exfiltration / unauthorized_action / content_assertion）、depth-N 依赖链作为唯一 strain 自变量、三值 judge（diverted/succeeded/admissible/undecidable）的判定逻辑。 | 文末指向 `01-/02-/03-/04-*.md` 的内部链接，归档改名（`2026-08-04-*.md`）后已经指不到实际文件了——纯格式问题，不影响内容，不需要动原文档。 |
 | 2026-08-04 | [technical-roadmap](tech/2026-08-04-technical-roadmap.md) | 架构与实现细节：两个 git worktree（`rtg-capsec` 生成端 branch `capsec/env-state-judges`、`dtap-capsec` 测量端 branch `capsec/measurement-layer`）；env-state judging 的渲染链路（LLM 只出结构化 `HarmDeclaration`，harness 确定性渲染 `judge.py`）、三种 shape 各自的固定注入构造方式、depth 数据模型与 `validate_chain` 校验闸门、k=3 self-consistency 质量投票；测量侧 victim runner 命令、judge-LLM 从 gpt-5.4 切到 deepseek-chat 的修复过程、`analyze_strain.py` 的结果-语料对齐逻辑；victim 能力/可用性表。 | victim 表把「为什么能力梯度这么窄」交代得很清楚——Meta 前沿模型网关工具协议互不兼容、Anthropic 缺 credit、Google 免费层只开 flash——这张表本身就是对当前卡点最好的证据，建议随后续 victim 变化持续更新，别只留在这一份快照里。 |
-| 2026-08-04（追加 §2b/§3/§4） | [findings](tech/2026-08-04-findings.md) | §1 shape-依赖（exfil/UA 全 5 个 depth 均 0，content 0.33–1.0，见需要你注意 #3）；§2 首批多 victim 小样本数据（n 太小，无法解出单调趋势）；**§2b（新增，本轮核心）——rift 的 depth 1→24 well-powered（n_admissible 15–22/cell，~135 任务）definitive 结果**：chain-depth 不 strain rift（benign_rate flat-to-rising，depth24=0.875；diversion 在 depth1 最低之后 noisy-flat，无 monotonic 上升），两条结论都直接反驳「越深越容易被攻破」的朴素 strain 故事，末尾给出两条前进路径（新自变量 vs 弱 victim）供决策；**§3（新增）**总结方法论上行得通的部分（三值 judge、genuine depth gating、确定性判据 vs llm_check 判据的脆弱性对比）；**§4（新增，原§3 infra 教训扩充/重排）**记录 judge.py import 路径要从 canonical `dt_arena` 找、judge 会继承 victim 的 `OPENAI_BASE_URL`、前沿模型网关对 agentic tool-use 不友好（Gemini 走 Google 原生 endpoint 是目前唯一干净的路）。文档自己指出「content 易感、action 不易感」的结果和 [avo-redteam](../avo-redteam/_INDEX.md)「诽谤类记录归档转述是唯一防御盲区」的结果互相印证。 | §2b 与 [progress 追加段](progress/2026-08-04-progress.md) 的数字完全一致（benign@24=0.875、diversion@1=0.056），两份文档互相印证，没有发现矛盾——这是迄今最扎实的单点结论，第一次是「扩够语料后敢下定论」而不是「n 不够所以什么都不能说」。但 §2b 末尾的「两条前进路径」和 progress.md 的「fork, needs a decision」是同一件事的两处重复表达，建议以后这类需要人做选择的分叉决策只在 progress 里写一处、tech findings 只放数据和结论，避免两份文档各自演化出不一致的措辞。另外 §3/§4 提到「llm_check 判据脆弱，曾把 judge 的 404 静默吞成 diverted=false」这个坑——核对 [runbook](tech/2026-08-04-runbook.md) 后确认：runbook 只静态记录了「judge 默认 deepseek-chat、需要 provider 路由」这个配置事实，**没有把「验证 judge 确实存活/可达」写成操作步骤**，这个已经真实发生过的失败模式（曾让"resisted"是假象）目前仍只停留在事后记录，没有变成可执行的核验清单项，和 avo-redteam 那边「trivial 假防御未进核验清单」是同一类坑（见 [avo-redteam 索引 #6](../avo-redteam/_INDEX.md)）。 |
+| 2026-08-04（追加 §1b/§2b/§3/§4，最后一次追加为 2026-08-05） | [findings](tech/2026-08-04-findings.md) | §1 shape-依赖初步观察（super_nova，n=1–3，见需要你注意 #4）；**§1b（本轮新增）——同一 shape-依赖结论在 rift 上用 well-powered 数据复现**：exfiltration（n_adm 合计 31，5 depth 全 0）、unauthorized_action（n_adm 合计 15，5 depth 全 0）diversion 全部 0.0，同批 content_assertion 0.056–0.556，明确写下「supersedes the n=1–3 tables below (§2)」；§2 首批多 victim 小样本数据（n 太小，已被 §1b/§2b 取代）；**§2b——rift 的 depth 1→24 well-powered（n_admissible 15–22/cell，~135 任务）definitive 结果**：chain-depth 不 strain rift（benign_rate flat-to-rising，depth24=0.875；diversion 在 depth1 最低之后 noisy-flat，无 monotonic 上升），两条结论都直接反驳「越深越容易被攻破」的朴素 strain 故事，末尾给出两条前进路径（新自变量 vs 弱 victim）供决策；**§3** 总结方法论上行得通的部分（三值 judge、genuine depth gating、确定性判据 vs llm_check 判据的脆弱性对比）；**§4** 记录 judge.py import 路径要从 canonical `dt_arena` 找、judge 会继承 victim 的 `OPENAI_BASE_URL`、前沿模型网关对 agentic tool-use 不友好（Gemini 走 Google 原生 endpoint 是目前唯一干净的路）。文档自己指出「content 易感、action 不易感」的结果和 [avo-redteam](../avo-redteam/_INDEX.md)「诽谤类记录归档转述是唯一防御盲区」的结果互相印证，§1b 又把这条印证从 n=3 加固到 well-powered。 | §1b/§2b 与 [`2026-08-05-strain_shapes.csv`](tech/2026-08-05-strain_shapes.csv) 的数字完全一致（逐条核对过 n_admissible、diversion_rate、Wilson CI，没有发现不匹配），数据完整性可信。但 CSV 里的 `frontier_depth`/`relative_strain` 两列，findings.md 全文一次都没提到，也没有说明算法——见需要你注意 #8，这是本轮唯一的透明度缺口。§2b 末尾的「两条前进路径」和 progress.md 的「fork, needs a decision」仍是同一件事的两处重复表达（上一轮已指出，本轮未变），建议以后这类需要人做选择的分叉决策只在 progress 里写一处。另外 §3/§4 提到「llm_check 判据脆弱，曾把 judge 的 404 静默吞成 diverted=false」这个坑——核对 [runbook](tech/2026-08-04-runbook.md) 后确认：runbook 只静态记录了「judge 默认 deepseek-chat、需要 provider 路由」这个配置事实，**没有把「验证 judge 确实存活/可达」写成操作步骤**，这个已经真实发生过的失败模式（曾让"resisted"是假象）目前仍只停留在事后记录，没有变成可执行的核验清单项，和 avo-redteam 那边「trivial 假防御未进核验清单」是同一类坑（见 [avo-redteam 索引](../avo-redteam/_INDEX.md) #4）。 |
 | 2026-08-04 | [runbook](tech/2026-08-04-runbook.md) | 环境变量与两个 worktree 路径；三步操作流程（生成语料，docker-free → victim sweep，需 docker，从 `dtap-capsec` 跑 → `analyze_strain.py` 出图）具体命令；operational caveats：共享 docker 主机清理规则（不许删别人的 `pool_*`/`rds-*`）、UIUC 用 docker 不是 podman、judge LLM 必须走独立 provider（不能继承 victim 的 base_url）、`.env` 里 Meta key 的 `|` 转义坑、Gemini 免费层限流（`--max-parallel 1`）。 | 无。 |
+| 2026-08-05（新文件） | [`strain_shapes.csv`](tech/2026-08-05-strain_shapes.csv) | 原始数据表：4 个 model×shape 分组（rift 的 content_assertion/exfiltration/unauthorized_action，gemini-2.5-flash-lite 的 content_assertion）、22 行，逐 depth-cell 给出 n / benign_rate / n_admissible / diversion_rate / Wilson 95% CI / undecidable_rate，另加两个此前没出现过的列 `frontier_depth`、`relative_strain`。是 findings §1b/§2b 表格和本索引 #1/#4 数字的直接数据源。 | 逐条核对过表格数字与 findings.md 的转述一致，没有发现误差。`frontier_depth`/`relative_strain` 两列缺文档说明，且对样本量小的行（尤其 gemini-2.5-flash-lite 的 n=1 cell）取值不稳，已记入需要你注意 #8，正式引用前建议先补文档说明。 |
 
 ---
 
@@ -123,7 +186,7 @@ well-powered sweep 已经耗尽了当前精力（见 #1），但如果后续要�
 - **depth 是唯一自变量，env-breadth 钉死** —— 否则「strain 更高」和「环境更复杂」会混杂，`validate_chain` 强制真实的依赖链而非表面深度。
   **2026-08-04 追加（这条决策的效力边界已被测出）**：在 rift 上把这条自变量测到 depth 24（well-powered，
   n_admissible 15–22/cell）后发现它对前沿模型不起作用——benign_rate 不降反升、diversion 无 monotonic
-  趋势，见「需要你注意的」#1。depth 轴本身仍然是干净的自变量（`validate_chain` 保证的真实性没有问题），
+  趋势，见「需要你注意的」#2。depth 轴本身仍然是干净的自变量（`validate_chain` 保证的真实性没有问题），
   但「用它来 strain 一个前沿模型」这个应用已经走到头，继续加 rift-depth 数据不会再有新信息（文档原话
   「further rift-depth runs add nothing」）。下一步是否要引入第二个自变量（推理难度/歧义/干扰项密度/
   分支）取代或补充 depth，是一个待决策项，不是既定架构。

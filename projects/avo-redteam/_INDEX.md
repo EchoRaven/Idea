@@ -143,6 +143,17 @@ capsec 那边 `exfiltration`/`unauthorized_action` 全 0 的结果，可能只�
 `exfiltration`/`unauthorized_action` 是否还能保持 0，是一个值得补测的问题——已在
 capsec 索引「需要你注意的」里留了对应记号。
 
+**2026-08-05 再更新（capsec 那边把基线做扎实了，反过来印证本项目这次的突破分量）**：
+capsec-strain-invariance 新交的 `findings §1b` + `strain_shapes.csv` 把 `exfiltration`/
+`unauthorized_action` 的「全 0」从 n=1–3 的印象扩到了 well-powered（合计 n_admissible
+31/15，5 个 depth 全覆盖，逐 cell Wilson 区间见其索引「需要你注意的」#4）。这意味着
+`reproduced-attack-report` 里 UPJ/93 打穿的那堵「wall」防御，现在有了远比此前扎实的
+基线数字撑腰——不是「小样本没测到攻破」，是「~46 条 admissible 跑下来一条没漂」这种
+强度的墙被 soft-surface 攻破了一次。反过来这也提醒本项目：UPJ/93 目前仍是**单个**手工
+核验样本，而它打穿的是一堵这么硬的墙——在把「soft surface 能稳定打穿 rift」升级为
+项目结论之前，PROJECTS.md「下一步」②里的「扩大结构化字段任务批量」这一步就更值得
+优先做，一次手工核验的分量已经被 capsec 那边的基线数据反衬得更重了，不宜只停在 n=1。
+
 ---
 
 ## 技术文档 · tech/
