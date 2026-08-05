@@ -180,6 +180,20 @@ schema 净化器（`SANITIZE_TOOL_SCHEMAS`，修的是 `api.llama.com/compat` �
 type 参数的整体拒绝）如果本项目未来要接入除 rift/groovy 外的其它 Llama 家族模型，
 可以直接复用，不用重新踩这个坑。
 
+### 9.（新增，跨项目提示，来自新入库的 forgingground-gen）「不信中间信号，只信 ground truth」这条纪律在第三个完全不同的领域被独立验证
+
+[forgingground-gen](../forgingground-gen/_INDEX.md)（2026-08-05 首次入库的应用生成
+流水线项目）把自己最重要的方法论纪律总结为「ground-truth-first——只信真实渲染/
+日志/registry/boot-probe，不信日志行或静态代码猜测」，并用它推翻过 5 个以上的
+错误理论；配套的「delivery ≠ narration」（LLM 自己喊的 `🚀 DELIVER_PROJECT` 不算数，
+只有 `main()==0` 且 `releases/` 非空才算真实交付）和本项目「ENDORSE vs RELAY」的
+区分（转述不算攻击成功，见上方 #4）本质上是同一类判定设计——都是在「意图/表面信号」
+和「真实结果」之间划一条硬线。三个项目（本项目的「不信 judge success 字段」、
+capsec-strain-invariance 的「diversion 比值一律配 Wilson CI」、forgingground-gen
+的「ground-truth-first」）在红队判定、攻击生成统计、应用交付验收三个不同领域各自
+独立撞上并修正了同一个问题——中间信号系统性地比真实 ground truth 更乐观。纯属
+记录，不构成本项目待办。
+
 ---
 
 ## 技术文档 · tech/

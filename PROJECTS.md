@@ -227,6 +227,64 @@
 
 ---
 
+## 🔥 forgingground-gen
+
+- **类型**：技术项目 / AI 应用生成流水线
+- **一句话**：contract → FastAPI+Postgres+React 全栈应用的一次性多 agent 生成流水线，
+  目标是单次运行同时满足「真实交付」与「视觉保真度 ≥0.65」两个硬指标
+- **仓库**：`/home/haibotong/forgingground-gen`（生成运行专用机器，代码只在这台机器上；
+  该机器的 agent GitHub 出网被 403 挡住，同步到本仓库靠 owner 人工转交，见卡点）
+- **技术栈**：podman + podman-compose 编排的多 LLM-agent 团队（orchestrator /
+  design-analyst / 前后端工程师 / verifier / 浏览器测试用户）· FastAPI + Postgres +
+  React(Vite) · vertex proxy `:8790` / relay `:19080`
+- **断点**：交付侧三个真实阻塞已定位并修复——#505（`deliver_project` 遇字符串
+  checklist 崩溃）、#508（auth-header 检查器误判 ES6 简写为缺失）、#510
+  （never-run 的 registered chain 误挡 `business_chain`）。最新 r85 首次跑到
+  **GREEN delivery gate**（0 blocker、15/15 endpoints、12/12 ui_flow、13/13
+  chains、visual 通过）——是迄今最接近首次真实 `create_release` 的一次，但文档
+  自己写明「validation in flight」，**至今还没有一次真正产出过 `create_release`**，
+  §3 标题句「essentially solved」跑在了这句限定词前面。保真度侧三个修复同样已
+  发布：#506/507（CTA 配色从蓝改回品牌红）、#509（modal/overlay 截图前先触发
+  交互）、#512（30 个 catalog 标题此前共用同一张裁剪海报，改为分配到 60 张真实
+  海报）——#512 被认为是 content screens 从 ~0.5 冲向 0.65 门槛最可能的关键杠杆，
+  但还没经过 r86 验证。三项交付修复里 #505/#508 都有「proven live」的运行编号
+  佐证，#510 没有同等级别的证据。
+- **下一步**：①（最高优先级，等下一批 r85/r86 结果即可判定）用「`project.json`
+  完整 + `main()==0` + `releases/` 非空」这三条项目自己定义的机械判据逐项核实
+  r85/r86 是否真的产出了第一次 `create_release`，把「essentially solved」替换成
+  写实的判定结果（是/否，附具体 run 号）；②同一批数据里检查 #510 是否真的生效，
+  补一条和 #505/#508 同等级别的「proven」引用（run 号 + chain 通过数据），目前
+  三项交付修复的证据强度不对等；③如果 r86 证实了 #512，把 content screens 的
+  Part-A 分数更新进下一份文档，最好按 screen 类别给出完整表格，而不是只报
+  「~0.5」这一个孤立数字，方便直接对照 0.65 的硬门槛；④确认 GitHub 出网 403
+  是长期状态还是临时限制——是长期状态就把「人工转交同步」正式写进项目自己的
+  runbook，是临时限制就评估给 `agent:claude_code` 开白名单的可行性，不要让这个
+  单点一直靠这次文档里的一句话交代口口相传。
+- **卡点**：GitHub 出网被 403 挡住，代码/文档同步到这个仓库全靠 owner 人工转交
+  ——和 avo-redteam 的「groovy key 403」、capsec-strain-invariance 的「`rtg-capsec`
+  分支只推到备份 remote」是同一类访问单点。另外 r85 的 GREEN delivery gate
+  距离真实首次交付只差「验证」这一步，是当前唯一在途的阻塞，下一批文档到了就
+  能直接判定是否解除。
+- **更新**：2026-08-05
+- **文档索引**：[projects/forgingground-gen/_INDEX.md](projects/forgingground-gen/_INDEX.md)
+
+<details><summary>笔记 / 决策记录</summary>
+
+- 2026-08-05 —— 首次入库，收到项目状态总览文档 `forgingground-gen.md`（单文件，
+  不经 `sync/sources.conf` 自动拉取管线，由 owner 人工放入，原因是生成运行所在
+  机器的 agent GitHub 出网被 403 挡住）。核心内容：交付侧三个真实阻塞已定位并
+  修复，r85 首次跑到 GREEN delivery gate，但尚未验证出真实 `create_release`；
+  保真度侧三个修复同样已发布，#512（海报去重复化）有望是 content screens 冲向
+  0.65 门槛的关键杠杆，待下一轮验证。方法论上「ground-truth-first」「delivery
+  ≠ narration」两条纪律和 avo-redteam「不信 judge success 字段，手工核验
+  tool_params」、capsec-strain-invariance「diversion 比值一律配 Wilson CI」
+  是同一类教训的第三次独立印证，详见索引「跨项目可借鉴」。详见索引「需要你
+  注意的」#1–4。
+
+</details>
+
+---
+
 ## 🌊 stock-agent
 
 - **类型**：技术项目 / 产品

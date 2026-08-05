@@ -436,6 +436,21 @@ gemini-2.5-flash-lite 卡配额）都有了实质进展，但项目最初建议�
 的理由——但这不代表"换注入面"这条建议应该被取消，只是这轮的证据让两条路径都值得做，不是
 谁完全压倒谁。
 
+### 14.（新增，跨项目提示，来自新入库的 forgingground-gen）「不信中间信号，只信 ground truth」这条纪律在第三个完全不同的领域被独立验证
+
+[forgingground-gen](../forgingground-gen/_INDEX.md)（2026-08-05 首次入库的应用生成
+流水线项目）把自己最重要的方法论纪律总结为「ground-truth-first——只信真实渲染/
+日志/registry/boot-probe，不信日志行或静态代码猜测」，用它推翻过 5 个以上错误
+理论；配套的「delivery ≠ narration」判定设计（LLM 自己喊的 `🚀 DELIVER_PROJECT`
+不算数，只有 `main()==0` 且 `releases/` 非空才算真实交付）和本项目「diversion
+比值一律配 Wilson 95% CI，不再裸报干净点估计」是同一类问题的第三次独立修正——
+中间信号（日志行、干净的点估计）系统性地比真实 ground truth 更乐观。另外
+forgingground-gen 自己也有一处「标题结论跑在证据前面」的例子（§3 写「delivery
+blocker: essentially solved」，但同段紧跟着说「validation in flight」，至今
+还没真正产出过一次 `create_release`）——这正好是本项目一直在强调的「干净的点
+估计/结论容易比实际证据更硬」这条教训的又一个具体案例，可以作为下次审阅同类
+文档时的参照。纯属记录，不构成本项目待办。
+
 ---
 
 ## 进度汇报 · progress/
