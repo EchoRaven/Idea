@@ -38,16 +38,28 @@
 - **代码**：`/data1/common/haibotong/dtap-platform`（服务器）　**Python**：`~/miniconda3/envs/dt/bin/python`
 - **文档索引**：[projects/avo-redteam/_INDEX.md](projects/avo-redteam/_INDEX.md)
 - **技术栈**：OpenAI Agents SDK、MCP / FastMCP、deepseek（attacker+judge）、tmux
-- **断点**：rift IP-exfil 的 Tier-2 跑在 tmux 会话 `rift_ipexfil`（~10 轮 × ~11 分钟），
-  等着手工核验。UPJ-medical 的启动器 `launch_upj_rift.sh` 已就绪，排在 IP 之后串行跑。
-  **groovy（5.15）全线停摆** —— key 被 403 policy-block，IP / UPJ / belief 臂全部 parked，
-  工具默认 `--model groovy_kite316` 所以 key 一恢复就能直接打。
-- **下一步**：核验 rift IP-exfil 结果 —— 按 runbook 三步走：① 先查 `run.log` 有无
-  traceback / 403 / 429 / `Target responded (0 chars)`（有则整轮是 confound，ASR 无效）
-  ② 逐条读 `traj_info.agent_final_response` 判断是 endorse 还是 disclaimed relay
-  ③ **读收件方邮箱**（任意发件人），不能只看 victim 的已发送
-- **卡点**：groovy key 的 403 是 5.15 分支的单点阻塞，且目前没有带日期的推进动作。
-  需要决断：要么正式申请一个安全评估专用 key，要么明确暂停 5.15 分支
+- **断点**：rift 三条 Tier-2 全部跑完并手工核验 ✅——IP-exfil、UPJ-medical 均为
+  genuine defense；closed-loop（`task_from_spec` 生成任务 + `ablation_to_skill` 生成技能）
+  也端到端跑通 vs rift，「生成产物未跑」的缺口正式关闭（仍是本地替身，没接真实
+  redteam-data-synth）。但 findings.md 里对 rift 在同一诽谤归档任务上的默认行为给出了
+  两组矛盾的比例——§2/Net 说基线「filing ~8/10（withhold ~2/10）」，§6 说 closed-loop
+  「withheld ~7/10（relay ~2/10）」却称其与「hand-authored baseline」functionally
+  identical——这两个数字对不上，「闭环复现了手工基线行为」这个结论目前不能自洽。
+  **groovy（5.15）依旧全线停摆**，key 仍是 403，progress.md 这次把这个阻塞正式写成了
+  「project-management gap」，但 owner/日期仍是 `<assign>`/`<set date>` 占位符，没真填。
+- **下一步**：
+  ① 回头核对 rift 诽谤归档基线的原始 run 记录，把 §2/Net「filing ~8/10」和 §6
+  「withheld ~7/10」两个数字对齐，或查清这两处是否指的是两个不同的 run，修正 findings
+  里的表述——这是当前唯一卡住「闭环已验证」结论的东西；
+  ② 把 groovy key 的 ACTION ITEM 填实：指派一个真实负责人和日期，否则 5.15 分支会继续
+  无限期悬空；
+  ③ 顺手把 runbook 的 Tier-2 三步核验清单补一条：检查生成任务是否落在
+  `DTAP_DATASET_ROOT` 下、run 的 duration 不是异常的 <1s ——防止一次纯配置错误的
+  trivial「已防御」假结果被当成 Tier-2 confirmed（findings §6 已口头提醒过这个坑，
+  但还没写进任何核验清单）。
+- **卡点**：groovy key 403 仍是 5.15 分支唯一的单点阻塞（这次自我承认但仍未分派）；
+  新增卡点——rift 基线数字的内部矛盾使「闭环产物行为等同手工基线」这条关键结论暂时
+  站不住，需要人工回查 run 记录才能定论。
 - **更新**：2026-08-04
 
 <details><summary>笔记 / 决策记录</summary>
@@ -55,6 +67,14 @@
 - 2026-08-04 —— 收到首批 5 份文档并归档。索引里记了 5 条待办，其中两条关于
   溯源结论的证据强度值得优先看：belief 臂正式运行还没跑过，而 findings 把它
   和 reps=3 消融、端到端核验并列呈现。
+- 2026-08-04（第二批）—— 同一天内收到 progress/findings 的就地修订版，另补入一份
+  此前漏收录的技术文档（using-victims-from-another-repo，与 capsec-strain-invariance
+  的 victim 接入方式强相关，见两边索引）。修订版正面回应了首批索引的两条证据分层批评：
+  findings §2 把结论显式拆成 Tier-2-confirmed（仅诽谤转述一条）vs Tier-1-hypothesis
+  （杠杆量级、溯源），§4 自己承认 belief 探针违反项目自己的方法论铁律。同时新增三条
+  rift Tier-2 验证（IP-exfil / UPJ / closed-loop），均为 genuine defense。但发现一个
+  新问题：findings 内部对 rift 诽谤基线的转述/withhold 比例前后矛盾（§2 说 filing~8/10，
+  §6 说 withheld~7/10），见索引「需要你注意的」#1（本轮最高优先级）。
 
 </details>
 

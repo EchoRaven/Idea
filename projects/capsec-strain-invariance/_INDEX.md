@@ -95,3 +95,10 @@ benign-only 探测把这个数字钉死，不需要很多 runs。
 - **judge LLM 换成 deepseek-chat，且走独立 provider 路由** —— 判官不能继承 victim 的 `OPENAI_BASE_URL`，否则判官会打到 victim 的网关上（曾经导致 404 被静默吞成「resisted」）。
 - **diversion 比值一律配 Wilson 95% CI，不再裸报**（2026-08-04 追加）—— 小 n 下的整数比值（0.0/1.0）极易被误读成强结论；`analyze_strain.py` 现在给每个 cell 配区间，逼着自己和读者面对当前样本量下「什么都还没被证明」的现实。
 - **新 victim 优先复用现有 endpoint/key/eval harness**（2026-08-04 追加）—— rift 5.14 与 super_nova 同 `api.ai.meta.com/v1` + `LLAMA_API_KEY`、标准 tool-calling，直接进现有 openaisdk eval，不用每次扩梯度都去攻克一个新网关的兼容性问题。
+  **2026-08-04 追加（跨项目参考）**：[avo-redteam](../avo-redteam/_INDEX.md) 新交了一份
+  [`using-victims-from-another-repo`](../avo-redteam/tech/2026-08-04-using-victims-from-another-repo.md)
+  集成指南，把这条决策正在用的 `rift 5.14` 接入方式（endpoint、key、可复用的
+  `victim_client.py`）正式文档化了。如果这边后续要把梯度顶端扩到 groovy 5.15，
+  该文档 §4 已经给出现成的 `--victim-arch responses --victim-api-key-env GROOVY_KEY
+  --victim-reasoning-effort high` 参数，不用重新摸索；但要注意 avo-redteam 那边
+  groovy key 目前 403 停摆，这条路暂时也走不通。
