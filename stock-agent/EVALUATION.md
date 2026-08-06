@@ -26,7 +26,7 @@
 |---|---|---|
 | **replay_eval.py** | 委员会的**置信度能否预测收益**?决策的形状对不对? | 重放 screen→briefing→committee 写决策(**只决策,不成交**),接前瞻收益记分卡 |
 | **replay_loop.py** | 学习闭环能否**通电**(产出平仓复盘)? | 隔离库里按历史推进**完整** `run_trade_cycle`(含撮合/平仓/`reflect` 写复盘) |
-| **learning_ab.py** | 委员会读到自己的复盘后**行为是否真变**? | difference-in-differences(WITH vs WITHOUT memory)+ Wilson 区间 |
+| **learning_ab.py** | 委员会读到自己的复盘后**行为是否真变**? | 同标的内 review 消融(混淆-free,`--ablate-review`)+ bootstrap 区间;旧 DiD 亦保留 |
 | **_health.py** | (护栏)防配额耗尽产污染数据 | Gemini 探活 + fail-safe 熔断,被 replay_* 复用 |
 
 ### replay_eval.py —— 置信度→收益 + 决策形状
@@ -57,11 +57,14 @@ uv run python -m scripts.learning_ab --db <replay_loop库副本> --as-of 2025-05
 uv run python -m scripts.learning_ab --db <副本> --inject NVDA,GOOGL,AMZN,TSLA --reps 4
 # prominent 通道(M9 attempt#2):该票上次结果单独显眼摆 prompt 顶部
 uv run python -m scripts.learning_ab --db <副本> --prominent --reps 4 --controls 6
+# ★混淆-free 口径(推荐):同标的内切换复盘在/不在,无 control 组,标的身份被解耦
+uv run python -m scripts.learning_ab --db <副本> --ablate-review --inject NVDA,GOOGL,AMZN,TSLA,META --reps 3
 ```
 - **difference-in-differences**:treatment(有亏损复盘的票)vs control(无复盘的票),各跑 WITH/WITHOUT memory,比较**买入率(比例)**。
 - **Wilson 95% 区间**:只在 treatment 的 WITH/WITHOUT 区间**分离**时才认"复盘压低了买入";重叠 = 测不出(≠证否)。
 - `--inject` 合成注入(格式与真复盘一致,加功率);`--prominent` 换独立显眼通道(A/B 两种喂法)。
-- **评估日要选对**:risk-off 日委员会几乎全 hold → 买入率地板、测不出;要用委员会本会买的日子(bull),复盘才有"买可压"。
+- **★`--ablate-review`(混淆-free,首选)**:原 DiD 的 treatment/control 是**不同标的**,复盘效应与标的身份耦合。此模式**同一标的**只切换它自己的 `trade_review` 在/不在(靠 `get_committee_context(exclude_kinds=("trade_review",))`,默认关、线上不变),通用知识/近期决策两条件相同 → 差异纯归因于复盘。报告 Wilson 区间 + **bootstrap 区间(按标的重采样)**,把不确定性归到"标的"这个单位,正面回应"跨标的非随机分组"的混淆。
+- **评估日要选对**:risk-off 日委员会几乎全 hold → 买入率地板、测不出;要用委员会本会买的日子(bull),亏损复盘才有"买可压"的下压空间。
 
 ---
 
