@@ -293,22 +293,41 @@
 - **文档索引**：[projects/stock-agent/_INDEX.md](projects/stock-agent/_INDEX.md)
 - **技术栈**：Python 3.12 / FastAPI / FastMCP / SQLAlchemy+SQLite / uv、Gemini、
   Next.js + TypeScript + Tailwind、yfinance + finnhub + SEC EDGAR、富途 OpenD（默认关）
-- **断点**：M1–M7 全部完成，~170 commits / 785 后端离线测试。M8 已从「方向」推进到
-  「机制通电+测过」：`replay_loop.py` 在隔离库跑通完整 `run_trade_cycle`，25 天历史重放
-  产出 2 笔平仓 → 2 条复盘写进记忆；`learning_ab.py` 做 DiD（有复盘 AMD/JPM vs 无复盘
-  AAPL/MSFT）测出委员会对自己复盘的行为响应 **DiD≈0，几乎无响应**。置信度→收益显著性
-  检验也用三区间够样本重跑（39 买入/22 决策日）完成，结论口径从「样本不足」升级为
-  「测了，不显著」。M9 因此被重新定义：瓶颈不是数据管道（复盘已经喂进 memory_context），
-  是委员会没有有效权衡它 —— 是 prompt/框定问题。
-- **下一步**：照 ROADMAP §M9 的方案改 committee prompt——委员会读到某票的 `trade_review`
-  记忆时，要求 `bear_rebuttal`/理由里显式回应"上次这只票亏了 X%，这次买入的额外理由是什么"，
-  不能只是把复盘塞进 memory_context 就算完。改完立刻用 `scripts/learning_ab.py` 重跑 DiD，
-  看是否从 ≈0 转负（负值=委员会读到亏损复盘后变谨慎）—— 这把尺子已经现成，不需要再造。
-- **卡点**：DiD≈0 目前只测了 1 轮、2 笔平仓，且 treatment/control 完全按标的划分（AMD/JPM
-  有复盘、AAPL/MSFT 没有）——不是随机分组，无法排除"这两只票本来行为就不同"的混杂，文档
-  自己也承认"机制探针非结论"。要让 DiD 结果站得住，得先用 `replay_loop.py` 跑更长窗口/更高
-  换手拿到更多独立平仓样本，且最好让分组方式避免与 memory 状态完全共线。
-- **更新**：2026-08-04
+- **断点**：M1–M8 全部完成（785 后端离线测试）。**M9 这次从「计划」推进到「两次真实
+  干预都做完」**：attempt#1（强化 memory 段"必须权衡亏损"）区间重叠、无可测效应；
+  attempt#2（把该票上次结果显眼摆到 prompt 顶部）**不仅无效、还适得其反**——treatment
+  WITH 买入率 0.81 [0.65,0.91] vs WITHOUT 0.53 [0.36,0.69]（Wilson 95% CI，区间分离），
+  显眼提醒亏损反而让委员会买得更多（疑似报复/抄底心理），**已否决，绝不接线上**。这是
+  「测量拦下一个直觉上显然正确、实测却有害的改动」的具体案例，评测纪律本身工作正常。
+  同时新起了 **M10**：委员会模型 Gemini→gpt-5.5，可插拔 LLM 客户端
+  （`app/llm/openai_compat.py`+`factory.py`）已上线，发现 gpt-5.5 定性更强（会主动引用
+  亏损、会说"不为反弹重复买入"，Gemini 做不到）但**不能直接换**——默认校准是补偿 Gemini
+  乱买设计的，gpt-5.5 套用后 ~98% hold，已加 env 门控的 relaxed 校准，**重验进行中，
+  本批文档未交付结果**。另外本批新增独立方法论文档 `EVALUATION.md`，但发现它与同批
+  `PROGRESS.md`/`ROADMAP.md` 对 M9 attempt#2 的进度描述**直接矛盾**——EVALUATION §5 说
+  attempt#2「尚未验证」，PROGRESS/ROADMAP 却都给出了已验证并否决的具体数字，大概率是
+  EVALUATION 起草时引用了旧措辞、后续两份文档更新后没同步。`ARCHITECTURE.md` 本批内容
+  与 08-04 版逐字相同，commit 数仍写 ~164（其它文档已是 ~170），技术栈表未提及新的可插拔
+  LLM 客户端，是相对最落后的一份文档。
+- **下一步**：①（M9，具体可执行）按 ROADMAP 已给的方向，把「结构化约束」落地为具体实现——
+  给 bear 角色加一条强制指令：该票如有近端已实现亏损，必须先引用具体金额/百分比并质询本次
+  买入的额外理由；或在委员会输入里新增一个独立的量化盈亏字段（而非叙事性提醒）。做完立刻用
+  `learning_ab.py --prominent`（或对应新通道）配 Wilson CI 重跑 DiD，只有区间**分离且方向
+  为负**（委员会变谨慎）才允许接线上——两次朴素干预都已被这把尺子挡下，不要跳过这步验证；
+  ②（M10，等结果即可判定）确认 gpt-5.5 + relaxed 校准的 `replay_eval` 重验是否已经跑完——
+  检查决策形状是否健康（buy/hold 都常见、置信度分布拉开）、置信度能否预测收益。验证通过再
+  评估是否把线上 committee 从 Gemini 换成 gpt-5.5（权衡：延迟 ~12s vs 2s、网关额度）；
+  ③（文档一致性，低成本高价值）让 `EVALUATION.md` §5 和 `PROGRESS.md` §2.5/`ROADMAP.md`
+  M9 对齐——把"M9 attempt#2 尚未验证"改成"已验证、已否决"并写明 Wilson CI 数字，避免下一个
+  读者被两份互相矛盾的文档误导；
+  ④（顺手）把 `ARCHITECTURE.md` 的 commit 计数（~164）和技术栈表更新到当前状态（~170，
+  补一行可插拔 LLM 客户端），让它不再是四份文档里最落后的一份。
+- **卡点**：DiD 的 treatment/control 仍按标的划分、非随机分组这个混杂尚未解决；M10 换模型
+  的关键验证结果（gpt-5.5+relaxed 的 `replay_eval`）本批文档明确写着「进行中」但未交付，
+  下一批文档如果还是「进行中」就要留意这条线是否卡住了；`EVALUATION.md` 与
+  `PROGRESS.md`/`ROADMAP.md` 的矛盾不是项目进展的阻塞，但是文档可信度的一个新问题，需要
+  作者自己去核实哪个版本准确。
+- **更新**：2026-08-05
 
 <details><summary>笔记 / 决策记录</summary>
 
@@ -320,5 +339,17 @@
   `replay_loop.py` 实测能产出平仓复盘，但 `learning_ab.py` 的 DiD 检验显示委员会对自己
   复盘几乎无响应（DiD≈0），且该检验的 treatment/control 完全按标的分组、非随机，混杂未被
   排除（索引新发现，文档本身没点名）。M9 因此被重新定义为 prompt/框定问题。详见索引第 1 条。
+- 2026-08-05 —— 第三批：仓库根目录 `stock-agent/` 下的 `PROGRESS.md`/`ARCHITECTURE.md`/
+  `ROADMAP.md`/`README.md` 正式并入 `projects/stock-agent/` 规范路径，同时新增独立方法论
+  文档 `EVALUATION.md`。ARCHITECTURE 内容与 08-04 版逐字相同（纯路径整理），但
+  PROGRESS/ROADMAP 有实质新内容：M9 两次真实 prompt 干预落地——attempt#2（把该票上次亏损
+  结果显眼摆到 prompt 顶部）经 Wilson CI 证实**适得其反**（委员会反而买得更多），已否决、
+  绝不接线上，是这套评测纪律真正拦下一次有害改动的具体案例；新起 M10，探索把委员会模型从
+  Gemini 换成 gpt-5.5，可插拔 LLM 客户端已上线，但发现"模型与 prompt 强耦合"——gpt-5.5
+  套用为 Gemini 设计的默认校准后 ~98% hold，relaxed 校准重验进行中、本批未交付结果。
+  **新发现的问题**：新增的 `EVALUATION.md` §5 说 M9 attempt#2「尚未验证」，与同批
+  PROGRESS/ROADMAP 报告的「已验证、已否决」直接矛盾，大概率是文档起草时序不同步导致；
+  `ARCHITECTURE.md` 的 commit 数（~164）和技术栈表也没跟上其它文档（已 ~170，且完全没提
+  新的可插拔 LLM 客户端）。详见索引「需要你注意的」#1–#4。
 
 </details>
