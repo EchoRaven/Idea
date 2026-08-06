@@ -75,7 +75,13 @@ set -a; source /data1/common/haibotong/MODEL_KEYS.local.env; set +a   # 密钥,g
 uv run python -m scripts.replay_eval --dates 10 --top-k 5 --model gpt-5-5-genai-responses
 # 给强模型松绑校准(默认校准是补偿 Gemini 乱买的,强模型会过度保守):
 STOCKAGENT_CALIBRATION=relaxed uv run python -m scripts.replay_eval --model gpt-5-5-genai-responses ...
+# 结构化置信度 rubric(服务端由委员会四维分算置信度,治置信度扁平;线上默认 off):
+STOCKAGENT_CONFIDENCE=rubric uv run python -m scripts.replay_eval --dates 8 --top-k 4
 ```
+`STOCKAGENT_CONFIDENCE=rubric`:委员会打 trend/fundamental/sentiment/risk 0–4 分,服务端算
+`conf=(t+f+s)/12·(1−0.5·r/4)`。实测(96 决策/24 决策日/三区间)置信度 stdev 0.05→**0.173**、
+`flat_confidence` flag 消失;命中率按置信度桶**单调**(1 日 36→75%、5 日最高桶 100%),但 Pearson
+线性相关仍不显著。**扁平已治住是直接可测的真事;"高置信更准"是弱证据**(见 PROGRESS §2.8)。
 可用模型 ID 与坑见 `/data1/common/haibotong/MODEL_ACCESS_GUIDE.md`。要点:gpt-5.x 传
 temperature=0 会 400(客户端默认不发);reasoner 慢(~12s/次)且吃 token(max_tokens 32k)。
 **密钥只在 `MODEL_KEYS.local.env`(600,git 外),绝不进仓库。**
