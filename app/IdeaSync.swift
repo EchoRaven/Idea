@@ -449,14 +449,21 @@ final class Store: ObservableObject {
     func setLaunchAtLogin(_ on: Bool) {
         let fm = FileManager.default
         if on {
-            let exe = Bundle.main.executablePath ?? ""
+            // 必须用 /usr/bin/open 启动 .app，而不是直接执行 bundle 里的二进制 ——
+            // 后者在登录时起不来（会立刻以 0 退出，看起来像"设了自启但没生效"）。
+            let bundlePath = Bundle.main.bundlePath
             let plist = """
             <?xml version="1.0" encoding="UTF-8"?>
             <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" \
             "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
             <plist version="1.0"><dict>
               <key>Label</key><string>com.thb.ideasync</string>
-              <key>ProgramArguments</key><array><string>\(exe)</string></array>
+              <key>ProgramArguments</key>
+              <array>
+                <string>/usr/bin/open</string>
+                <string>-a</string>
+                <string>\(bundlePath)</string>
+              </array>
               <key>RunAtLoad</key><true/>
             </dict></plist>
             """
