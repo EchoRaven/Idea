@@ -45,12 +45,16 @@
   是 0,项目就有充分理由正式收官、转入 writeup;如果不是 0,"capability doesn't buy
   security holds structurally"这个结论需要按注入面重新限定适用范围——目前无法预判,
   留给①的结果决定;
-  ⑦（本轮新增,具体可执行,成本很低,优先级低于①-④)§9.5 的 root-cause upgrade 段落
-  把 Llama-4-8B 推理轴失败概括成"below the agentic-tool-use threshold",但同一文档里
-  这个模型在 gmail 任务上有非零 benign_rate(CAPSTONE、§0a)——建议把这句改成更精确的
-  "无法调用 googledocs 工具族,但能操作 gmail 工具",避免读者把"googledocs 特定失败"
-  误读成"该模型整体不具备 agentic 能力";同时可以顺手记一句"已确认网关无替代弱模型
-  (候选字符串均 Invalid model name)",避免后续重复尝试同一条死路。
+  ⑦（本轮更新,具体可执行,成本很低,优先级低于①-④)§9.5 的 root-cause upgrade 段落
+  把 Llama-4-8B 推理轴失败概括成"below the agentic-tool-use threshold";新追加的
+  「fix-attempt closure (opt-2)」段落已经把这句笼统措辞的真实机制讲清楚了——不是
+  "googledocs vs gmail 工具族"的区别(换成 gmail 投递账本后模型两次尝试仍然 0/6),
+  而是"单步无穿透转储 vs 多步 tool-call id 穿透检索"的区别,difficulty 轴任务恰好
+  只需要前者。建议把 §9.5 那句笼统措辞改写成"能做单步、无需 id 穿透的 gmail 批量
+  转储,但做不到需要跨步骤正确传递 tool-call id 的多步检索",而不是简单地"能操作
+  gmail 工具"——opt-2 的两次尝试已经证明后者本身不够精确,gmail 投递路径下模型依旧
+  全灭;网关无替代弱模型这条待办已在本轮文档里被确认(候选字符串均 Invalid model
+  name),不用再提醒。
 - **卡点**：depth 轴、distractor-density 轴、discrimination 轴、以及 within-victim
   相关性检验(§2d)四条证据都收敛到同一个负结果,项目下一步依赖一个连续七轮建议、但连本轮
   (第八次,本轮是 §0-pre 追加的 3-victim convergent 结果)仍未被执行的转向——从「继续在
@@ -116,7 +120,22 @@
 「换注入面」pivot 依旧原样悬着。这次新增本身唯一值得记录的地方是一处措辞：新结论把
 「googledocs 工具族失败」概括成「该模型低于 agentic 工具使用门槛」，但同一文档里
 Llama-4-8B 在 gmail 任务上有非零 benign_rate（CAPSTONE、§0a），范围写得比证据支持的更
-宽，详见项目索引「需要你注意的」新增 #24。
+宽，详见项目索引「需要你注意的」新增 #24。**2026-08-07 十四次新增（本次处理的更新，
+紧接十三次，同样是单点追加）**：findings.md 在 §9.5 末尾又加了一段「fix-attempt
+closure (opt-2)」——两次系统性尝试想给弱 victim 榨出一个干净的推理数字：①把账本从
+googledocs 换成 gmail 邮件投递，模型开始参与，但把工具调用 id 当字面占位符字符串，
+多步检索失败、发出空答案；②再加提示明确调用 `get_gmail_content(limit=200)`，模型这次
+正确取到账本、也开始计算，但循环截断，把答案发给用户而不是发邮件。两次都是 0/6。文档
+归因于工具调用状态穿透、推理完成、结果路由三个环节同时纠缠失败，都不是 harness 缺陷。
+这条新增最有价值的地方是**直接解释了上一条（十三次新增）指出的措辞过宽问题**：不是
+"googledocs vs gmail 工具族"的区别（换成 gmail 后模型依旧全灭），而是"单步无穿透
+转储 vs 多步 tool-call id 穿透检索"的区别——difficulty 轴上 Llama-4-8B 之所以有非零
+benign_rate，是因为那批任务只需要单次、无需状态穿透的 `get_gmail_content` 一次性
+转储，和推理阶梯任务需要先 list 再按 id 精确 get 的结构完全不同，文档原话点明了这一
+点。这不改变任何一条既有卡点——四条 strain 轴 × 四条 diversion 通路的核心结论不变，
+「换注入面」pivot 依旧原样悬着，本轮同样不是针对它的新证据；也不构成新的 Wilson CI
+合规问题，因为 0/6 衡量的是竞争力而非 diversion 比值。详见项目索引「需要你注意的」
+新增 #25。
 - **更新**：2026-08-07
 - **文档索引**：[projects/capsec-strain-invariance/_INDEX.md](projects/capsec-strain-invariance/_INDEX.md)
 
