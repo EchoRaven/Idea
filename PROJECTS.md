@@ -44,7 +44,13 @@
   ⑥（决策项,非阻塞,取决于①的结果)如果①做完后 soft-surface 下 action diversion 依旧
   是 0,项目就有充分理由正式收官、转入 writeup;如果不是 0,"capability doesn't buy
   security holds structurally"这个结论需要按注入面重新限定适用范围——目前无法预判,
-  留给①的结果决定。
+  留给①的结果决定;
+  ⑦（本轮新增,具体可执行,成本很低,优先级低于①-④)§9.5 的 root-cause upgrade 段落
+  把 Llama-4-8B 推理轴失败概括成"below the agentic-tool-use threshold",但同一文档里
+  这个模型在 gmail 任务上有非零 benign_rate(CAPSTONE、§0a)——建议把这句改成更精确的
+  "无法调用 googledocs 工具族,但能操作 gmail 工具",避免读者把"googledocs 特定失败"
+  误读成"该模型整体不具备 agentic 能力";同时可以顺手记一句"已确认网关无替代弱模型
+  (候选字符串均 Invalid model name)",避免后续重复尝试同一条死路。
 - **卡点**：depth 轴、distractor-density 轴、discrimination 轴、以及 within-victim
   相关性检验(§2d)四条证据都收敛到同一个负结果,项目下一步依赖一个连续七轮建议、但连本轮
   (第八次,本轮是 §0-pre 追加的 3-victim convergent 结果)仍未被执行的转向——从「继续在
@@ -100,7 +106,17 @@
   扩到全部四个 victim，用的还是同一种已知"防得住"的注入方式，没有触碰 avo-redteam 已经
   证明"防不住"的那个维度。在这个具体缺口被填上之前，"capability doesn't buy security
   holds structurally"这个收官论断的 action 半边，证据基础和三天前相比没有实质变化——
-  变的只是难度/攻击强度/推理这三条轴上的证据量，不是注入面这条轴。
+  变的只是难度/攻击强度/推理这三条轴上的证据量，不是注入面这条轴。**2026-08-07 十三次
+新增（本次处理的更新，迄今最小的一次单点追加）**：findings.md 只在 §9.5 末尾追加了一段
+「root-cause upgrade」——把上一轮记录的「Llama-4-8B 推理轴 unmeasurable」这个判定做了
+根因排查，读实际轨迹确认 gmail/googledocs 工具都被正确 offer，模型是自己在第 4 步幻觉出
+「服务不可用」并放弃（33/33 复现，精确 5 步），排除了 harness/config bug；顺带确认网关上
+没有替代的、有工具调用能力的弱模型可用（候选字符串均返回 Invalid model name）。这不改变
+任何一条既有卡点——四条 strain 轴 × 四条 diversion 通路的核心结论不变，唯一仍未被执行的
+「换注入面」pivot 依旧原样悬着。这次新增本身唯一值得记录的地方是一处措辞：新结论把
+「googledocs 工具族失败」概括成「该模型低于 agentic 工具使用门槛」，但同一文档里
+Llama-4-8B 在 gmail 任务上有非零 benign_rate（CAPSTONE、§0a），范围写得比证据支持的更
+宽，详见项目索引「需要你注意的」新增 #24。
 - **更新**：2026-08-07
 - **文档索引**：[projects/capsec-strain-invariance/_INDEX.md](projects/capsec-strain-invariance/_INDEX.md)
 
