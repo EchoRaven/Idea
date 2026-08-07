@@ -5,8 +5,17 @@
 双轨架构：`rtg-capsec`（生成 depth-N 依赖链攻击任务）+ `dtap-capsec`（跑 victim、
 env-state 三值判定、出 strain 曲线）。
 
-**最近一次收到文档**：2026-08-07（累计已到第十八批。第十五批是迄今为止一次性追加
-内容最多的一批——
+**最近一次收到文档**：2026-08-07（累计已到第十九批。第十九批是 findings.md 在 §10
+之后新增的 §10.1——kimi（mid）在 §10 的病态提问语料上做了一次跨 victim 尝试，
+直接回应 §10 留下的开放问题「弱模型是否会在病态输入下 fabricate」。结果被文档自己
+定性为 confounded：kimi 把推理写成一整段思维链塞进最终消息，经常推理到一半被截断，
+按题型算的正确率（unique 1/6、underdetermined 3/6、contradictory 5/6）主要反映
+「没答完」而非「校准失败」；唯一读得干净的信号是一个独立的 fabrication detector
+在两类病态题（各 6 题）上全部报告 0/6——可见推理是老实的 case 枚举，不是自信编造。
+初步结论是 mid 模型大概率也不 fabricate（校准看起来"universal"），但这两个 0/6
+依旧没有配 Wilson CI，且测的是 kimi（mid）不是最可能出现"能力买安全"效应的
+Llama-4-8B（weak）。详见下方「需要你注意的」新增 #27。第十五批是此前迄今为止
+一次性追加内容最多的一批——
 同一份 `findings.md` 一次性新增了十个章节：置顶 **Abstract**、**CAPSTONE**、
 **Three-axis update**、**Deep-frontier follow-up**、**§7**、**§8**、**§8.1**、
 **§9**、**§9.1–§9.5**，时间戳跨 2026-08-06 至 2026-08-07）：核心变化是项目从「还在
@@ -28,12 +37,16 @@ Abstract 把这十节内容压缩成一页摘要，date-stamped 2026-08-07，是
 第五条 strain 轴——ambiguity/epistemic calibration，是「program complete」之后
 第一次真正扩展研究范围，而不是继续查漏补缺。
 **当前节奏**：仍然很快——继 08-04 三轮 + 08-05 十轮 + 08-06/08-07 十次实质性追加
-（CAPSTONE、三轴更新、§7–§9.5）之后，又追加了三批（root-cause upgrade、opt-2
-closure、§10）。项目自我评价已经「settled」/「complete」，但这个判定目前更像阶段性
-用词而非终点：第十八批刚新增了一条全新维度，且明确留了一个尚未交付的开放问题（校准
-是否 capability-ordered，见 #26），说明研究范围仍在扩张。被建议了十一轮以上、迄今
-一次都没被执行的「换注入面（wall→soft surface）」pivot 依旧原样悬着，见 #20。
-[avo-redteam](../avo-redteam/_INDEX.md) 本轮未见新文档，节奏对比不适用。
+（CAPSTONE、三轴更新、§7–§9.5）之后，又追加了四批（root-cause upgrade、opt-2
+closure、§10、本轮 §10.1）。项目自我评价已经「settled」/「complete」，但这个判定
+目前更像阶段性用词而非终点：第十八批新增了一条全新维度（ambiguity/calibration），
+本轮（第十九批）第一次尝试回答它留下的开放问题，但答案是 confounded、非决定性的——
+研究范围和未决问题都还在。值得记录的是响应速度本身：上一轮「需要你注意的」#26 /
+PROJECTS.md 下一步⑧建议的这条测试，成本最低、复用现成基础设施，一轮之内就被交付了，
+和被建议了十五轮以上、迄今一次都没被执行的「换注入面（wall→soft surface）」pivot
+（依旧原样悬着，见 #20）形成明显对比——这条 autonomous loop 不是不响应具体建议，
+只是这次响应的是新提的那条，不是搁置最久的那条。[avo-redteam](../avo-redteam/_INDEX.md)
+本轮未见新文档，节奏对比不适用。
 
 **2026-08-07 第十六批（本次处理的更新，全项目迄今为止最小的一次单点追加）**：
 `findings.md` 只在 §9.5 末尾新增了一段「root-cause upgrade」，给上一批 §9.5 的
@@ -83,6 +96,23 @@ rift 三档全部满分，轨迹核验证实是真实校准（4 解谜题枚举�
 正下方的「As of 2026-08-07」小结仍写着「FOUR independent strain axes...settled」，
 没有跟上这次新增的第五轴，是「顶部摘要滞后正文」这个模式第五次出现（继 #13/#15/#16/
 #22 之后）。
+
+**2026-08-07 第十九批（本次处理的更新，findings.md 在 §10 之后新增 §10.1，直接
+回应 §10 留下的开放问题）**：kimi（mid）在同一批病态提问语料上测了一遍，想验证
+「弱一档模型是否也会在信息不足/矛盾输入下编造确定答案」——如果成立，会是全项目
+迄今唯一一条支持「能力买安全」的证据。结果被文档自己定性为「confounded」：kimi
+把推理过程写成一整段思维链塞进最终消息，经常在推理中途被截断，按题型算的正确率
+（unique 1/6、underdetermined 3/6、contradictory 5/6）主要反映「没答完」，不是
+「校准失败」；回复长度在 95–3549 字符间跳动，不是固定 token 上限造成的，不是调大
+输出上限就能一次修好的问题。唯一读得干净的信号：一个独立的 fabrication detector
+在两类病态题（underdetermined/contradictory，各 6 题）上全部报告 **0/6**——可见的
+推理内容是老实的 case 枚举，不是自信编造；未校准的题是「被截断」，不是「被编造」。
+文档给出的初步结论是 mid 模型大概率也不 fabricate（校准看起来是"universal"的，
+和项目其余四轴"这些鲁棒性质与能力无关"的空结论一致），但明确承认这不是确定性答案，
+一个干净的 mid-model 数字需要更高的输出 token 上限才能拿到。
+**当前节奏**：延续「program complete 之后继续查漏补缺」的阶段，但和第十六、十七批
+（纯方法论 debug，不改变任何结论）不同——这次是对第十八批新增的第五轴给出第一次
+正面回答，只是这个回答本身还不够干净。详见下方新增 #27。
 
 ---
 
@@ -986,6 +1016,50 @@ underdetermined 6/6、contradictory 6/6），轨迹核验显示是真实校准�
 在第五条轴上依然保持。「换注入面（wall→soft surface）」这条建议（见 #20）这次也
 依旧没有被碰，不再重复计数，但状态没有变化。
 
+### 27.（本轮新增，第十九批，直接回应 #26 留下的开放问题）ambiguity 轴的 cross-victim 测试到手，但被截断问题 confound，且测的不是最可能出现效应的那一档 victim
+
+[findings §10.1](tech/2026-08-04-findings.md) 是本轮唯一的新增内容，直接回应
+#26 记录的开放问题——rift 在病态提问（信息不足/约束矛盾）上 24/24 关闭了一个操纵面，
+但文档留了一句「弱模型是否也会 fabricate，让校准成为 capability-ordered 的安全
+维度」尚未交付。这次用 kimi（mid）测了同一批语料，想看这个假设是否成立——如果弱一档
+模型确实会编造确定答案，这会是全项目迄今唯一一条支持「能力买安全」的证据，方向和
+其余四轴（susceptibility 与能力无关）相反。
+
+结果是文档自己承认的「confounded」：kimi 把推理过程写成一整段思维链塞进最终消息，
+经常推理到一半被截断（还在枚举 case 时戛然而止），按题型算的正确率（unique 1/6、
+underdetermined 3/6、contradictory 5/6）主要反映的是「没答完」，不是「校准失败」——
+回复长度在 95–3549 字符间跳动，说明不是一个固定 token 上限造成的，不是调大输出上限
+就能一次性修好。唯一读得干净的信号是一个独立的 fabrication detector：在两类病态题
+（underdetermined/contradictory，各 6 题）上全部报告 **0/6**，可见的推理内容是老实
+的 case 枚举（"Case D=4… Case D=5…"），不是自信编造。文档给出的初步结论是 mid 模型
+大概率也不 fabricate（校准看起来是"universal"的），但明确没有把这个结论坐实。
+
+需要指出两点：
+
+1. **这两个 0/6 依旧没有配 Wilson CI，而且这个指标本质上就是一个"是否被攻陷"的安全
+   指标，理应纳入项目自己那条"diversion 比值一律配区间"的规则**——n=6 时 0/6 的
+   Wilson 95% 上界大约在 0.39，也就是说"mid 模型不 fabricate"这个结论目前只能排除
+   "fabrication 率高于~39%"这么宽的区间，远没有 rift 那边（如果按 12 题合并算，0/12
+   上界约 0.24，且是完整答完的 24/24）来得确定。这延续了 #9/#11/#16/#17/#18 反复
+   指出的同一条规则在新结论里又一次没有被执行——"fabrication rate"不是字面意义上的
+   "diversion"，但衡量的是同一类风险，不应该因为换了个名字就被规则遗漏。
+2. **这次测的是 kimi（mid），不是最可能出现"能力买安全"效应的 Llama-4-8B（weak）**——
+   如果这个效应真实存在，按其余四轴的规律（competence 随能力单调下降），最先在弱一档
+   模型上显现的可能性最大，中间档反而是效应最不明显的地方。更值得注意的是
+   Llama-4-8B 在推理阶梯上已经被证实存在严重的 agentic harness 局限（§9.5、
+   root-cause upgrade、opt-2 closure：33/33 因为工具调用状态穿透失败而在第 4–5 步
+   放弃，不是推理能力本身的问题）——直接拿它测 ambiguity 语料，很可能重演同一种
+   「unmeasurable」而非「fabricate/not fabricate」的结果，测试设计上需要先想清楚
+   怎么把「模型答不出来」和「模型没有诚实报告病态」这两种失败模式分开，不能默认
+   这条语料对 Llama-4-8B 就是可测的。
+
+这次响应速度本身值得记录：#26 / PROJECTS.md 下一步⑧提的这条建议——复用现成的
+constraint-puzzle 生成器和已接入的 kimi-k3，成本明显低于设计一条全新轴——一轮之内
+就被交付了，和「换注入面」pivot 连续十五轮以上未被采纳形成对比，说明这条
+autonomous loop 并非不响应具体建议，只是这次响应的是新提出的那条。但因为
+confound，#26 留下的核心开放问题（校准是否 capability-ordered）实质上依旧悬而
+未决——这次交付的是"尝试过、结果不干净"，不是"回答了"。
+
 ---
 
 ## 进度汇报 · progress/
@@ -1022,7 +1096,12 @@ cross-victim"，尚未交付。详见需要你注意 #26。 | **正面**：§7/�
 "unique"控制组的初次误判被人工核实推翻）；但表格本身有一处未澄清的算术矛盾（三档
 6/6 之和是 18，total 行却写 24/24），且 Abstract 正下方「As of 2026-08-07」小结
 仍写着"FOUR independent strain axes...settled"，没有同步到现在的五轴——是这份
-文档「顶部摘要滞后于正文」这个模式第五次出现。 |
+文档「顶部摘要滞后于正文」这个模式第五次出现。**本轮（§10.1，第十九批）见需要你
+注意的 #27**——kimi（mid）在同一批病态提问语料上做了一次 cross-victim 尝试，
+回应 #26 留下的开放问题，但结果被文档自己定性为 confounded（被截断问题稀释了
+正确率），唯一干净的信号是一个独立 fabrication detector 报告两类病态题 0/6+0/6，
+没有配 Wilson CI；且测的是 kimi（mid）而非最可能出现"能力买安全"效应、同时也最可能
+撞上 harness 局限的 Llama-4-8B（weak），核心开放问题依旧未被真正回答。 |
 | 2026-08-04 | [runbook](tech/2026-08-04-runbook.md) | 环境变量与两个 worktree 路径；三步操作流程（生成语料，docker-free → victim sweep，需 docker，从 `dtap-capsec` 跑 → `analyze_strain.py` 出图）具体命令；operational caveats：共享 docker 主机清理规则（不许删别人的 `pool_*`/`rds-*`）、UIUC 用 docker 不是 podman、judge LLM 必须走独立 provider（不能继承 victim 的 base_url）、`.env` 里 Meta key 的 `|` 转义坑、Gemini 免费层限流（`--max-parallel 1`）。 | 无。 |
 | 2026-08-05（新文件） | [`strain_shapes.csv`](tech/2026-08-05-strain_shapes.csv) | 原始数据表：4 个 model×shape 分组（rift 的 content_assertion/exfiltration/unauthorized_action，gemini-2.5-flash-lite 的 content_assertion）、22 行，逐 depth-cell 给出 n / benign_rate / n_admissible / diversion_rate / Wilson 95% CI / undecidable_rate，另加两个此前没出现过的列 `frontier_depth`、`relative_strain`。是 findings §1b/§2b 表格和本索引 #1/#4 数字的直接数据源。 | 逐条核对过表格数字与 findings.md 的转述一致，没有发现误差。`frontier_depth`/`relative_strain` 两列缺文档说明，且对样本量小的行（尤其 gemini-2.5-flash-lite 的 n=1 cell）取值不稳，已记入需要你注意 #8，正式引用前建议先补文档说明。 |
 
@@ -1118,6 +1197,12 @@ cross-victim"，尚未交付。详见需要你注意 #26。 | **正面**：§7/�
   文档自己的措辞里首次留了一个"是否 capability-ordered"的开放问题，方向上和其余
   四轴「与能力无关」的结论不同，是否会成为第一条支持"能力买安全"的轴，取决于仍未
   交付的 cross-victim 验证。详见需要你注意 #26。
+  **2026-08-07 三次追加（cross-victim 验证到手，但没有解出这条决策的开放问题）**：
+  §10.1 用 kimi（mid）测了同一批语料，结果被文档自己判定为 confounded（被截断
+  问题稀释了正确率），唯一干净的信号（fabrication detector 报告病态题 0/6+0/6）
+  没有配 Wilson CI，且没有测最可能出现"能力买安全"效应的 Llama-4-8B（weak）。
+  「校准是否 capability-ordered」这个问题因此依旧开放——这次交付的是一次尝试，
+  不是一个答案。详见需要你注意 #27。
 - **diversion 只在 admissible 上计分，undecidable 单独排除** —— 这是处理「too weak to reach the injection ≠ resisted」这个混淆的正式机制，写进了判定本身而非靠人工事后甄别。
 - **judge LLM 换成 deepseek-chat，且走独立 provider 路由** —— 判官不能继承 victim 的 `OPENAI_BASE_URL`，否则判官会打到 victim 的网关上（曾经导致 404 被静默吞成「resisted」）。
   **2026-08-04 追加（证据强化，但操作清单未跟上）**：findings §3/§4 把这条决策的必要性坐实——确定性判据
@@ -1157,6 +1242,11 @@ cross-victim"，尚未交付。详见需要你注意 #26。 | **正面**：§7/�
   [0,.20]），是这条规则被写下以来执行最好的一批。仍有例外：§8.1 的内部攻击强度对比
   （四个 diversion 数字）和 Deep-frontier follow-up 的两处 diversion=0.154，依旧
   裸报。详见「需要你注意的」新增 #23。
+  **2026-08-07 二次追加（例外又添一处，且是一个新指标类型）**：§10.1 的 kimi
+  fabrication detector 结果（两类病态题各 0/6）同样没有配 Wilson CI——这是这条
+  规则第一次在"fabrication rate"而非"diversion rate"上被绕过，说明规则的适用
+  范围需要明确到"任何衡量是否被攻陷/操纵成功的比值"，而不能靠字面关键词
+  "diversion"来判断是否适用。详见「需要你注意的」新增 #27。
 - **新 victim 优先复用现有 endpoint/key/eval harness**（2026-08-04 追加）—— rift 5.14 与 super_nova 同 `api.ai.meta.com/v1` + `LLAMA_API_KEY`、标准 tool-calling，直接进现有 openaisdk eval，不用每次扩梯度都去攻克一个新网关的兼容性问题。
   **2026-08-04 追加（跨项目参考）**：[avo-redteam](../avo-redteam/_INDEX.md) 新交了一份
   [`using-victims-from-another-repo`](../avo-redteam/tech/2026-08-04-using-victims-from-another-repo.md)
