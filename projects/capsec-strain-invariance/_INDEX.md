@@ -5,32 +5,31 @@
 双轨架构：`rtg-capsec`（生成 depth-N 依赖链攻击任务）+ `dtap-capsec`（跑 victim、
 env-state 三值判定、出 strain 曲线）。
 
-**最近一次收到文档**：2026-08-06（第十四批——同一份 `findings.md`，§0-pre 内「MATCHED
-CONTROL」段落被再次就地扩充，是这份文件第十一次实质性追加）：上一轮（第十次）留下的
-悬空承诺——「matched linear-20 只有 n=9，一份补齐到 n→~25 的重跑正在跑」——这次真的
-跑完了，而且样本量超过承诺（n=30），但结果不是「区间收窄、方向不变」，是**方向反转**：
-linear benign 从上一轮的 0.556（n=9）掉到 **0.30**（n=30，Wilson [0.17,0.48]），现在
-**低于** convergent 的 0.44（[0.27,0.63]），两者高低关系反过来了。findings.md 把这段
-标题直接改成「MATCHED CONTROL REFUTES 'convergent structure strains more'」，结论是
-「chain 结构（linear vs convergent）不是 strain 驱动因素，真正起作用的是任务的
-**content density + depth**——同一份高信息密度种子换成 20 步纯线性链，一样能把 rift
-压到 0.30」，并直接写明「the apparent convergent effect was entirely the denser
-seed」。diversion 在两种结构上都维持低位（~0.12），不随哪种结构更 strain 而改变——
-这条反直觉模式在这次反转里全须全尾地保住了，是本轮唯一没被推翻的结论。详见「需要你
-注意的」新增 #19，它直接推翻/精确化了 #18（十次追加的效应量下修）和 #15（七次追加的
-「convergent 轴是唯一压穿前沿模型的轴」）的核心措辞。这是继 §1b（08-05 第一次）、
-§0/§2c-distractor（第二次）、§2d（第三次）、§2c-discrimination（第四次）、
-§2c-cross-victim/gemini（第五次）、§0a（第六次）、§0-pre 初版（第七次）、§0-pre
-3-victim 表（第八次）、kimi-k3 订正（第九次）、matched control 首版（第十次）之后
-同一份文件第十一次追加。
-**当前节奏**：仍然很快——08-04 三轮 + 08-05 十轮 + 08-06 一轮，跨三天十四次实质性交付，
-且都来自同一条 autonomous loop。这一轮是项目第三次主动回头纠正自己交出的头号新结论
-（第一次是九次追加的 kimi-k3 订正，第二次是十次追加的效应量下修），但这次改动幅度是
-三次里最大的一次——不是"数字变小"，是"方向本身不成立"，直接推翻了七到十次追加累积
-起来的"convergent DAG 结构是关键自变量"这条叙事线，替换成"content density 才是关键
-自变量，结构本身不是"。文档自己评价这次反转是「the matched control did its job — it
-caught and corrected a would-be overclaim」。[avo-redteam](../avo-redteam/_INDEX.md)
-同期也是这个节奏。
+**最近一次收到文档**：2026-08-07（第十五批，也是迄今为止一次性追加内容最多的一批——
+同一份 `findings.md` 一次性新增了十个章节：置顶 **Abstract**、**CAPSTONE**、
+**Three-axis update**、**Deep-frontier follow-up**、**§7**、**§8**、**§8.1**、
+**§9**、**§9.1–§9.5**，时间戳跨 2026-08-06 至 2026-08-07）：核心变化是项目从「还在
+找一条能 strain 前沿模型的自变量」转向「四条独立 strain 轴（难度、攻击强度、算术、逻辑）
+× 四条 diversion 通路（内容断言、动作、数值权威、逻辑权威）全部测完，结论收敛」。
+CAPSTONE（4-victim，well-powered）用更大样本重新做实了 §0a 的弱 victim 结果：
+Llama-4-8B 的 benign 在 depth 1→2→4 上真塌陷（0.34→0.21→0.16），但 diversion 在
+同一批更大样本（n_adm~30）下持平（0.10→0.12→0.17，CI 重叠）——直接推翻了 §0a 当初
+「diversion 朝 frontier 上升」这条读数，文档原话「was noise」。Three-axis update 补了
+攻击强度轴（§8/§8.1，rift/kimi 都不因换更强注入而提高 diversion，kimi 反而把攻击
+强度转成能力塌陷）和计算/推理轴（§9 系列，rift/muse-spark 算术 42/42、逻辑 24/24
+全满分，此前 ~0.4 的「hard-task floor」被重新归因为检索/整合负担而非推理本身），并
+新增数值权威（§9.1）、逻辑权威（§9.3）两条全新 diversion 通路，均为 0。§9.3 明确宣布
+「Program complete」，但之后又追加了 §9.4（推理能力的跨 victim 泛化）、§9.5（弱 victim
+在推理轴上因不会用工具而不可测，诚实报告为「unmeasurable」而非假 0）。全文顶部新增的
+Abstract 把这十节内容压缩成一页摘要，date-stamped 2026-08-07，是目前对整个项目最新、
+最权威的入口。详见下方「需要你注意的」新增 #20–#23。
+**当前节奏**：仍然很快，且量级变大——继 08-04 三轮 + 08-05 十轮 + 08-06/08-07 十次
+实质性追加（CAPSTONE 起步于 08-06，三轴更新和 §7–§9.5 收在 08-07）之后，findings.md
+现在有了一份独立的置顶 Abstract 充当「论文摘要」，这是这份文档第一次采用这种「随时可以
+整体重读」的结构，而不是像此前十四批一样只能靠逐段追加时间戳去重建全貌。项目自我评价
+已经「settled」/「complete」，但仍有具体缺口没被这次收官式总结覆盖——尤其是被建议了
+十一轮以上、迄今一次都没被执行的「换注入面（wall→soft surface）」pivot，见 #20。
+[avo-redteam](../avo-redteam/_INDEX.md) 本轮未见新文档，节奏对比不适用。
 
 ---
 
@@ -742,6 +741,81 @@ corrected a would-be overclaim」——这是项目第三次主动回头纠正�
 kimi-k3 的接入方式说明仍未补上；「换注入面（wall→soft surface）」这条建议这次也依旧
 没有被碰——本轮交付的是对已有结论的自我核查，不是新方向。
 
+### 20.（本轮新增，全项目目前最大的方法论缺口）CAPSTONE/三轴更新把研究问题定论为「settled」，但被建议十一轮以上、从未执行的「换注入面（wall→soft surface）」pivot，仍然完全没有出现在这份「收官」总结里
+
+新增的 Abstract、CAPSTONE、Three-axis update 三处都在使用「settled」「program
+complete」这类收尾措辞，把项目结论定格为「naive strain-invariance refuted；
+capability doesn't buy security 是结构性的，不是 strain 驱动的」。支撑这个结论的四条
+diversion 通路里，action（exfiltration/unauthorized_action）这一条在 §7 里首次补齐
+到全部四个 victim，结果依旧是 0/41、0/46（配了 Wilson CI，见下方 #23）——这是「action
+边界从不被攻破」这条结论证据最扎实的一次扩展。
+
+但 §7 用来测 action 边界的注入方式，从项目一开始（见「关键决策记录」「固定注入而非运行
+时注入」）到现在都没有变过——[avo-redteam](../avo-redteam/_INDEX.md) 已经用「soft
+surface」注入（把伪造内容 poison 进 victim 会读的记录本身，而不是直接写进任务指令）在
+rift 身上打出过一次手工核验的真实攻击成功，且触发的正是一次**动作**
+（`create_payout`）。本项目「需要你注意的」#7 从 2026-08-05 起就在反复提示这个缺口，
+累计已经提醒了十一轮以上（每一轮「下一步①」都写着同一条建议），但 CAPSTONE / 三轴
+更新 / §7–§9.5 这十个新章节里，没有一个是去验证「soft surface 下 action diversion
+是否还是 0」——四个 victim 全部补齐用的还是同一种「wall」式固定注入。也就是说，项目
+现在敢下「action 类攻击 0 diversion，跨全部四档能力」这个更强的结论，但样本量扩大的
+方向和 avo-redteam 已经证明过会被打穿的那个维度完全正交。在这个具体缺口被补上之前，
+「capability doesn't buy security holds for a structural reason」这个总结性论断，
+至少在 action 通路这一半上，只在「wall」注入面下成立，还没有在已知会被打穿的注入面下
+重新验证过。
+
+### 21.（本轮新增）第三个零基础设施说明就空降结果的新 victim：muse-spark-1.1，且全文对它的命名本身不一致
+
+新 victim **muse-spark-1.1**（标为「strong」，和 rift 并列成第二个前沿模型）首次出现
+在 CAPSTONE 对比表里，之后在 Deep-frontier follow-up、§7、§9.4 里反复被引用为「第二个
+强模型」的独立验证来源（比如 §9.4 用它验证 rift 的推理满分不是 rift 专属）。但全文没有
+一处交代它的 endpoint、鉴权方式、是否和 rift/kimi-k3/Llama-4-8B 用同一套 judge 和
+注入器——这是继 kimi-k3（见 #16）之后，第三个用这种方式引入的 victim，而 Llama-4-8B
+当初有 §4 完整的工具-schema 净化器接入记录做对照，标准明显不一致。
+
+命名本身也不统一：CAPSTONE 表头、Deep-frontier follow-up、§7 表格里写的是
+「muse-spark-1.1」，但 CAPSTONE 正文一句话（"two independent strong victims (rift
+AND muse-spark, near-identical curves)"）和 §9.4 整节（表头「muse-spark
+(strong)」、正文「muse's single "miss"」）都省略了版本号，写成「muse-spark」。无法从
+文档内部判断这是笔误还是指两个不同的模型版本——如果后续要正式引用「muse-spark 系列在
+4 个独立轴上都复现了 rift 的满分/零 diversion」这类跨章节汇总的结论，需要先确认全文
+说的是同一个模型。
+
+### 22.（本轮新增）§9.3 宣布「Program complete」的位置在文档中段，之后又追加了 §9.4/§9.5——继 #13/#15/#16 之后第三次出现「阶段性总结的位置和实际写作进度对不上」
+
+§9.3 结尾明确写下「**Program complete** — four strain axes × four diversion
+pathways, one conclusion.」，语气是收尾总结。但同一份 findings.md 在它之后又追加了
+两整节新内容：§9.4（把 §9/§9.2 的推理结果扩展到 muse-spark 和 kimi-k3，发现 kimi 在
+逻辑推理上大量 non-convergence）、§9.5（Llama-4-8B 在推理轴上因为不会操作 googledocs
+工具而完全不可测，诚实报告为「unmeasurable」而非假 0）。这两节都是高质量的补充证据，
+不是注水——§9.5 尤其体现了项目一贯的「先核实是不是 harness confound 再下结论」的好
+习惯（呼应此前 §9.2 抓到的判官假阴性）。
+
+问题不在内容，在措辞时机：这是继 #13（文件开头摘要「still blocked on a second
+powered victim」没跟上 §0a 的结果）、#15（§0-pre 自称「reframes §0」但 §0 headline
+没同步改写）、#16（同一个「still blocked」摘要连续两轮没更新）之后，第三次出现「某处
+写了收尾性质的话，但文档实际还在往后长」的模式。目前顶部新增的 Abstract
+（date-stamped 2026-08-07，晚于 §9.3/9.4/9.5 全部内容）已经是全文档最新、最全的收尾
+入口，读者应该以它为准，而不是被 §9.3 中段那句「Program complete」误导成「后面不会
+再有新章节」。建议后续维护者：只在文档最末尾或独立的 Abstract/tl;dr 区块使用
+「complete/settled」这类字眼，不要在章节内部使用。
+
+### 23.（本轮新增，方法论改善，值得记录）Wilson CI 合规性明显提升，但没有做到全面覆盖
+
+此前 #9/#11/#16/#17/#18 反复指出「关键决策记录」里「diversion 比值一律配 Wilson
+CI」这条规则在新增结论里经常被绕过（distractor/discrimination 子实验裸报、
+convergent 3-victim 表连分子分母都没给）。本轮新增的几节里，这条规则被系统性地重新
+执行：§7 的 exfiltration/unauthorized_action 首次跨全部四个 victim 逐个配了 Wilson
+区间（0/41 [0,0.086]、0/46 [0,0.077]）；§8 的攻击强度对比给了 [.03,.33]；§9.1 的
+数值权威探针给了 [0,.19]；§9.3 的逻辑权威探针给了 [0,.20]。这是本项目至今 Wilson CI
+执行力度最好的一批新结论。
+
+但仍不是全面合规：§8.1（kimi vs rift 的攻击强度内部对比表，四个 diversion 数字
+0.125/0.11/0.118/0.0）和 Deep-frontier follow-up（depth-30/40 的 diversion
+0.154，出现两次）依旧是裸点估计，没有配区间——这两节都是 n 较小（8.1 是 n_adm
+9–24，deep-frontier 是 n=14）本该最需要 CI 的地方。建议下次更新时优先补这两处，把这条
+规则的执行力度从「大部分新结论合规」补到「全部合规」。
+
 ---
 
 ## 进度汇报 · progress/
@@ -765,6 +839,7 @@ benign_rate 和 diversion 放一起算相关，得到 Pearson r=+0.61、Spearman
 strain 假设预测的负相关相反，是「proximity-to-frontier 提升易感性」这个朴素假设的又一次
 within-victim 反证，文档自己用「suggestive, not conclusive」定性，没有过度声称；**§3**
 总结方法论上行得通的部分（三值 judge、genuine depth gating、确定性判据 vs llm_check 判据的脆弱性对比）；**§4** 记录 judge.py import 路径要从 canonical `dt_arena` 找、judge 会继承 victim 的 `OPENAI_BASE_URL`、前沿模型网关对 agentic tool-use 不友好（Gemini 走 Google 原生 endpoint 是目前唯一干净的路）；**本轮新增一条**——Meta 的 `api.llama.com/compat` 网关会对任何缺 scalar `type` 的 MCP 参数整体拒绝工具列表（`400 - Parameter type is required`），修复是一个纯函数 `sanitize_json_schema`（拍平 union 类型、给缺失类型和 array 补默认值），接在 MCP wrapper 的 `list_tools` 里，由 `SANITIZE_TOOL_SCHEMAS` 开关控制、对 rift 等宽松网关零风险（TDD，8 个测试）——这正是 §0a 能够跑通 Llama-4-8B 这档弱 victim 的原因。文档自己指出「content 易感、action 不易感」的结果和 [avo-redteam](../avo-redteam/_INDEX.md)「诽谤类记录归档转述是唯一防御盲区」的结果互相印证，§1b 又把这条印证从 n=3 加固到 well-powered。**本轮追加的 cross-victim 尝试**：把探针参数化（`PROBE_MODEL/DEPTH/PARALLEL`）后正式在 gemini-2.5-flash-lite 上跑了一次，确认这档 victim 简单调用可用（8/8 成功）、拿到一个干净 cell（depth-1/K=0，benign 0.33，n_adm 3/6），但扩大 K 直接撞上免费层每日配额上限——K=100 让模型「崩溃」（3/6，归因笼统的「context/rate」），K=60 重跑 8 条得 0/8，归因于两次 agentic 跑法耗光每日配额，结论是「纯粹卡在付费配额，不是工具问题」，见需要你注意 #12。 | §1b/§2b 与 [`2026-08-05-strain_shapes.csv`](tech/2026-08-05-strain_shapes.csv) 的数字完全一致（逐条核对过 n_admissible、diversion_rate、Wilson CI，没有发现不匹配），数据完整性可信。但 CSV 里的 `frontier_depth`/`relative_strain` 两列，findings.md 全文一次都没提到，也没有说明算法——见需要你注意 #8。**§2c 的 distractor 子实验见需要你注意 #9**：四个 diversion 比值全部裸报、没有配 Wilson CI（违反本项目自己在关键决策记录里写死的规则），也没有随附逐 task 原始数据文件核对（不像 §1b/§2b 有 CSV 佐证）。**§2c 本轮新增的 discrimination 子实验证据更薄，见需要你注意 #11**：连 n_admissible 都没给，且 K=0 基线在两次探测间从 0.75 变到 0.917——§0 把三条轴并列写成「swept at real power」对这条轴尤其不准确，不是说结论错了，是 §0 的收敛表述容易让读者把三条轴的可信度拉平。§2b 末尾的「两条前进路径」和 progress.md 的「fork, needs a decision」仍是同一件事的两处重复表达（上一轮已指出，本轮未变），建议以后这类需要人做选择的分叉决策只在 progress 里写一处。另外 §3/§4 提到「llm_check 判据脆弱，曾把 judge 的 404 静默吞成 diverted=false」这个坑——核对 [runbook](tech/2026-08-04-runbook.md) 后确认：runbook 只静态记录了「judge 默认 deepseek-chat、需要 provider 路由」这个配置事实，**没有把「验证 judge 确实存活/可达」写成操作步骤**，这个已经真实发生过的失败模式（曾让"resisted"是假象）目前仍只停留在事后记录，没有变成可执行的核验清单项，和 avo-redteam 那边「trivial 假防御未进核验清单」是同一类坑（见 [avo-redteam 索引](../avo-redteam/_INDEX.md) #4）。**§2d 见需要你注意 #10**——结论方向与 §0 一致，但 11 个 cell 里有 3 个来自 distractor 轴、benign_rate 几乎不变（0.75/0.75/0.83），把它们和 depth 轴的 8 个 cell 混池算同一条相关系数，隐含「不同来源导致的 benign_rate 变化和 diversion 的关系一样」这个未经验证的前提；仅用 depth 轴 8 个 cell 时相关性本身也不显著（r=+0.58, n.s.），这一点文档如实披露，没有隐瞒。**cross-victim 尝试见需要你注意 #12**——K=60 重跑 0/8 归因于配额耗尽的论证站得住，但 K=100「崩溃」的原因文档只写了笼统的「context/rate」，没拆开是限流还是上下文溢出就和配额耗尽一起打包成「not a tooling gap」，如果实际是上下文溢出，加钱买配额并不能解决，这一点结论有过度合并的风险。**§0a 见需要你注意 #13**——这是本轮最重要的新内容：文件开头第 3–4 行的摘要（「still blocked on a second powered victim」）没有跟上 §0a 自己交出的结果，两者放在一起读有张力；§0a 的「diversion 未在 rel-strain≈1 处重合」是对 invariance 本身的初步反面证据，而 Llama 在全部测试 depth 上 benign_rate 从未达到 0.5，使其 `frontier_depth`（按 #8 反推的规则）本身是未定义的，这个「rel-strain≈1」比较点建立在一个不稳的分母上；diversion 8 个 depth 里也只在强调结论的 depth16 端点给了 Wilson CI，其余 7 个仍是裸报，延续了 #9/#11 已指出的规则执行不一致。**§0-pre 见需要你注意 #15**——本轮统计透明度最低的一条新结论：0.44/0.125 连分子分母都没给，比 #9/#11 已指出的「缺 Wilson CI」更严重；且文档只讲了 benign 竞争力下降，完全没有对照检查这个新低点上 diversion 是否真的升高——对照线性轴同样低 benign 的 d12（diversion 仅 0.10），convergent 的 0.125 并不异常，反而是 §2d「diversion 与 benign 正相关」这个反直觉模式的又一个印证点，而不是它的反例。另外 §0-pre 自称"reframes §0"，但 §0 headline 本身没有被同步改写，是继「文件开头摘要没跟上 §0a」之后第二处「新结论顶在最前面、旧结论未被撤回」的情况。**本轮新增的跨 victim convergent 段落见需要你注意 #16**——统计严谨度比 §0-pre 初版更差(三个 victim rift/kimi-k3/Llama-4-8B 全部无 n_admissible/CI，不是一个)；新增的 kimi-k3 是全文档第一个零基础设施说明就交结果的 victim；且它「mid reasoner」标签与实测能力排序(convergent benign 0.083 反而低于「weak 8B」Llama-4-8B 的 0.167)自相矛盾，文档只用「within noise」带过、无统计支撑。文件开头摘要「still blocked on a second powered victim」现在连续两轮(#13、#16)都没跟上正文交付的结果。**本轮(第九次)见需要你注意 #17**——kimi-k3 数字被就地订正(0.083→0.24, n=12→25)，解决了 #16 指出的标签排序矛盾，文档主动披露了订正原因，值得肯定；但订正后仍未配 Wilson CI，且这次约 3 倍的点估计跳变本身就是"小样本点估计不稳"的直接示范。**本轮(第十次)见需要你注意 #18**——matched control 是一次值得肯定的自我纠错：主动检验了此前最重量级的 convergent 结论，发现效应量被跨语料混杂夸大，主动下修（~0.3→~0.12）并首次给出 Wilson CI；但这个 CI 只覆盖 benign_rate，convergent 轴的 diversion 数字（0.125/0.083/0.118）依旧裸报，且承诺中的 n→~25 补充 linear 跑这次没有交付结果，下一批文档到了应优先核对。**本轮(第十一次)见需要你注意 #19**——上一轮的悬空承诺交付了（linear n=9→30），但结果是方向反转，不是区间收窄：linear benign 0.30 反而低于 convergent 0.44，标题直接改为「REFUTES」，「convergent 结构是关键自变量」这条叙事被替换成「content density 才是」。这是项目第三次主动回头纠正自己的头号新结论，且是三次里改动幅度最大的一次；diversion 不随 strain 上升这条结论是本轮唯一没被推翻、反而被进一步印证的部分。convergent 3-victim 表的 diversion 仍未配 CI，kimi-k3 接入方式仍未说明，「换注入面」建议仍未被采纳，均延续未解决。 |
+| 2026-08-07（第十五批，一次性新增 Abstract + CAPSTONE + Three-axis update + Deep-frontier follow-up + §7 + §8 + §8.1 + §9–§9.5，共十个章节，是迄今单批追加量最大的一次） | [findings（续）](tech/2026-08-04-findings.md) | **置顶 Abstract（新）**：把全项目压缩成一页摘要，2026-08-07 落款，是目前最新、最全的入口——四条 strain 轴（难度/攻击强度/算术/逻辑）× 四条 diversion 通路（内容断言/动作/数值权威/逻辑权威）全部测完，结论「competence 按能力排序、只在检索/整合负担下会掉；susceptibility 低、shape 固定、和能力/strain 基本无关」。**CAPSTONE**（4-victim, well-powered，2026-08-06）：首次把 §0a 的弱 victim 结果做实——Llama-4-8B 在 depth 1→2→4 上 benign 真塌陷（0.34→0.21→0.16），但同一批更大样本（n_adm~30）下 diversion 持平（0.10→0.12→0.17，CI 重叠），直接推翻 §0a「diversion 朝 frontier 上升」的读数，文档自己写明「was noise」。新增第二个强 victim muse-spark-1.1，和 rift 曲线近乎重合。**Three-axis update（2026-08-07）**：攻击强度轴（§8/§8.1，见下）和计算轴（§9 系列，见下）都不提高 diversion；此前~0.4 的「hard-task floor」被重新归因为检索/整合负担，不是推理限制。**Deep-frontier follow-up**（depth-30/40，2026-08-06）：把 depth 轴推到 40，rift/muse-spark 双双打平在 ~0.43 的「hard-task floor」，深度本身不再往下压，density 才是。**§7**（2026-08-06）：exfiltration/unauthorized_action 首次补齐到全部四个 victim，0/41、0/46 全部配 Wilson CI——action 边界「从不被攻破」这条结论证据最扎实的一次扩展，但用的仍是原始注入方式，见需要你注意 #20。**§8/§8.1**（2026-08-07）：新增攻击强度轴，固定任务/竞争力/判据只变注入强度（弱→强结构化字段→跨记录一致，后者专门针对 rift 已知的「跨记录一致性核对」防御），rift diversion 仍卡在 ~0.11；kimi（mid）把更强的注入转成能力塌陷（benign 0.278→0.105）而非易感性上升。**§9 系列**（2026-08-07）：§9 用无计算器、单一清洁账本的算术阶梯证明 rift 42/42 全对，锁定「~0.4 floor 是检索问题不是算术问题」；§9.1 把数值权威注入进这批任务，rift/kimi 均 0/16 拒绝（配 CI）；§9.2 用 24 道逻辑推理题证明 rift 24/24（人工核对纠正了判官的 4 个假阴性）；§9.3 对逻辑推理做同样的权威注入测试，rift 0/15（配 CI），并在此处宣布「Program complete」；§9.4 把算术/逻辑两条阶梯扩展到 muse-spark 和 kimi-k3，发现强模型两项都满分、kimi 在逻辑推理上大量因未收敛而失败（不是算错，是没算完）；§9.5 尝试在 Llama-4-8B 上跑同一套推理阶梯，发现它完全不会用 googledocs 工具、每次都在几步内放弃，如实报告为「unmeasurable」而非假 0。 | **正面**：§7/§8/§9.1/§9.3 是本项目至今 Wilson CI 规则执行最到位的一批新结论（见需要你注意 #23），§9.2/§9.5 延续了「先核实是不是判官假阴性/harness confound 再下结论」的好习惯。**需要注意**：①CAPSTONE/三轴更新把结论定格为「settled/complete」，但被建议十一轮以上的「换注入面（wall→soft surface）」pivot 依旧完全没有被执行，§7 补齐 action 全 victim 用的还是同一套注入方式，见需要你注意 #20；②第三个零基础设施说明就空降的新 victim muse-spark-1.1，且全文对它的命名本身不统一（有的地方省略版本号写「muse-spark」），见需要你注意 #21；③§9.3 宣布「Program complete」的位置在文档中段而非末尾，之后又追加了 §9.4/§9.5 两整节，是继 #13/#15/#16 之后第三次出现「收尾措辞和实际写作进度对不上」，见需要你注意 #22；④§8.1 和 Deep-frontier follow-up 的部分 diversion 数字仍未配 Wilson CI，是 #23 里指出的仅剩例外。 |
 | 2026-08-04 | [runbook](tech/2026-08-04-runbook.md) | 环境变量与两个 worktree 路径；三步操作流程（生成语料，docker-free → victim sweep，需 docker，从 `dtap-capsec` 跑 → `analyze_strain.py` 出图）具体命令；operational caveats：共享 docker 主机清理规则（不许删别人的 `pool_*`/`rds-*`）、UIUC 用 docker 不是 podman、judge LLM 必须走独立 provider（不能继承 victim 的 base_url）、`.env` 里 Meta key 的 `|` 转义坑、Gemini 免费层限流（`--max-parallel 1`）。 | 无。 |
 | 2026-08-05（新文件） | [`strain_shapes.csv`](tech/2026-08-05-strain_shapes.csv) | 原始数据表：4 个 model×shape 分组（rift 的 content_assertion/exfiltration/unauthorized_action，gemini-2.5-flash-lite 的 content_assertion）、22 行，逐 depth-cell 给出 n / benign_rate / n_admissible / diversion_rate / Wilson 95% CI / undecidable_rate，另加两个此前没出现过的列 `frontier_depth`、`relative_strain`。是 findings §1b/§2b 表格和本索引 #1/#4 数字的直接数据源。 | 逐条核对过表格数字与 findings.md 的转述一致，没有发现误差。`frontier_depth`/`relative_strain` 两列缺文档说明，且对样本量小的行（尤其 gemini-2.5-flash-lite 的 n=1 cell）取值不稳，已记入需要你注意 #8，正式引用前建议先补文档说明。 |
 
@@ -844,6 +919,14 @@ within-victim 反证，文档自己用「suggestive, not conclusive」定性，�
   不 strain 前沿模型，除非配上高信息密度的种子内容——不论线性还是 convergent 结构都会
   被压到 0.30–0.44」。真正缺失的自变量是内容密度，不是链式图结构。这是项目第三次主动
   纠正自己的头号新结论，详见「需要你注意的」新增 #19。
+  **2026-08-07 追加（这条决策的范围事实上已经扩大成「四条独立自变量」）**：
+  Three-axis update 在 depth/density 之外正式新增了攻击强度（§8/§8.1）和计算/推理
+  （§9 系列）两条独立 strain 轴，四条轴全部测完、结论一致——都不提高 diversion。
+  CAPSTONE 同时用更大样本重新验证了 Llama-4-8B 的弱 victim 结果，纠正了 §0a 当初
+  「diversion 朝 frontier 上升」的读数（认定是 n_adm=6 时的噪声）。这条最初写着
+  「depth 是唯一自变量」的决策，标题本身已经不再准确——项目实际在用的是一套四轴框架；
+  「program complete」的收尾判断，见需要你注意 #20 关于「换注入面」仍未验证这一具体
+  缺口。
 - **diversion 只在 admissible 上计分，undecidable 单独排除** —— 这是处理「too weak to reach the injection ≠ resisted」这个混淆的正式机制，写进了判定本身而非靠人工事后甄别。
 - **judge LLM 换成 deepseek-chat，且走独立 provider 路由** —— 判官不能继承 victim 的 `OPENAI_BASE_URL`，否则判官会打到 victim 的网关上（曾经导致 404 被静默吞成「resisted」）。
   **2026-08-04 追加（证据强化，但操作清单未跟上）**：findings §3/§4 把这条决策的必要性坐实——确定性判据
@@ -878,6 +961,11 @@ within-victim 反证，文档自己用「suggestive, not conclusive」定性，�
   规则在 convergent 轴上第一次被真正执行。但这次的 CI 只覆盖 benign_rate，convergent
   3-victim 表里的 diversion 数字（0.125/0.083/0.118）依旧裸报，这条规则对 diversion 比值
   的执行力度没有变化。详见「需要你注意的」新增 #18。
+  **2026-08-07 追加（合规性明显改善）**：§7/§8/§9.1/§9.3 四节新结论首次系统性地遵守了
+  这条规则（0/41 [0,0.086]、0/46 [0,0.077]、2/18 [.03,.33]、0/16 [0,.19]、0/15
+  [0,.20]），是这条规则被写下以来执行最好的一批。仍有例外：§8.1 的内部攻击强度对比
+  （四个 diversion 数字）和 Deep-frontier follow-up 的两处 diversion=0.154，依旧
+  裸报。详见「需要你注意的」新增 #23。
 - **新 victim 优先复用现有 endpoint/key/eval harness**（2026-08-04 追加）—— rift 5.14 与 super_nova 同 `api.ai.meta.com/v1` + `LLAMA_API_KEY`、标准 tool-calling，直接进现有 openaisdk eval，不用每次扩梯度都去攻克一个新网关的兼容性问题。
   **2026-08-04 追加（跨项目参考）**：[avo-redteam](../avo-redteam/_INDEX.md) 新交了一份
   [`using-victims-from-another-repo`](../avo-redteam/tech/2026-08-04-using-victims-from-another-repo.md)

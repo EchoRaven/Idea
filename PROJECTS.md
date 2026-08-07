@@ -16,117 +16,35 @@
 - **一句话**：验证 agent 攻击易感性是否由「相对能力强度」(任务离模型能力上限多近)决定,而非绝对能力 —— 若成立则「能力进步不买安全」
 - **仓库**：`rtg-capsec`(生成) + `dtap-capsec`(测量)　**分支**：`capsec/env-state-judges` / `capsec/measurement-layer`　（推到 remote `vaibackup`）
 - **技术栈**：env-state 三值判定 + depth 依赖链(strain 轴) + 固定注入 + deepseek judge + super_nova/Gemini victim
-- **断点**：扩语料到 well-powered 这条「下一步」已经做完并给出定论——rift 5.14 的 content 语料三轮扩容后达到 n_admissible 15–22/cell(~135 任务),depth 1→24 全 sweep 完成。结果是**负结果**:benign_rate 不降反升(depth 24 达 0.875,已核实不是判据变松的假象)、diversion 在 depth 1 最低后噪声式持平、无 monotonic 趋势 —— **chain-depth 不能 strain 一个前沿模型,depth 轴作为 strain 自变量在 rift 上已被证伪**,原先「统计 power 不够」的说法现在应更新为「power 够了,答案是否定的」。同时,想把这个 well-powered 规模复制到第二个 victim 目前全部受阻:GPT 网关在 tool-result 轮崩溃、Gemini 免费层限流(多步任务跑不完)、Meta codename 已 500 逾 6 小时 —— 只有 rift + deepseek 生成可靠可用。这和上一份「4-victim ladder 已证伪梯度太窄」的乐观表述有张力,后者只是在 n=1–3 的小样本上跑出梯度,不等于能把第二个 victim 也扩到 well-powered。**2026-08-05 新增**:同一批 rift 数据把 exfiltration/unauthorized_action 两个「动作」shape 也补齐到逐 depth-cell 的 Wilson 区间(合计 n_admissible 31/15,此前只有跨 5 个 depth 聚合的 14/8),结果依旧是全部 0 diversion——「拒绝边界卡在动作而非内容,不卡在深度」现在和「depth 不能 strain 前沿模型」并列成为两条 well-powered 结论,直接呼应 avo-redteam 独立测出的 wall-vs-soft-surface 边界(exfil/UA 目前测的仍是 wall 等价物,尚未测 soft-surface,见下方笔记)。unauthorized_action 因 benign 完成率低(0.13–0.63)admissibility 仍然塌缩(n_adm 1–5/cell,最多 75% undecidable),这部分统计仍偏弱,但跨两个 shape 全 0 的一致性是主要证据。另外新数据文件里首次出现的 `relative_strain`/`frontier_depth` 归一化列,没有任何 prose 文档说明算法,且对 gemini-2.5-flash-lite 这类小样本 victim 完全押在单次 n=1 结果上,正式引用前需要补文档说明(细节见项目索引「需要你注意的」#8)。**2026-08-05 二次新增(同一天第二次追加,findings.md 新增 §0/§2c)**:项目实际动手做了上一轮「下一步」①②里的②——把 distractor density(inbox 干扰邮件密度,K=0/60/150/300,depth 固定为 2)当成新自变量跑通,结果同样是负:benign_rate 不降反升(0.75→0.83)、diversion 是纯噪声(0.36/0.46/0.27/0.17,无趋势),§0 把这条和 depth 轴并列写成「两条独立复杂度轴都被 rift 扛住」的收敛结论。但这条新证据比 depth 轴弱得多:基线 n_admissible 只有 11(depth 轴是 15–22/cell)、最高的 K=300 只 partial 跑了 6/12、K=600 直接跳过、且四个 diversion 比值全部裸报没配 Wilson CI——直接违反项目自己在决策记录里写死的「diversion 比值一律配区间」规则。更值得注意的是**上一轮明确建议优先做的①(换注入面 wall→soft surface)没有被采纳**——项目选择先做②而不是①,这不是逻辑矛盾(大概率是同一条 autonomous loop 在建议发出前就已经在跑这个方向),但结果是这条最具体、成本最低、且已经有 avo-redteam 正面证据打底的建议又被搁置了一轮,而两条独立复杂度轴都测出负结果后,继续加第三条新轴的边际价值在下降,转向注入面的优先级应该更高而不是更低。**2026-08-05 三次新增(同一天第三次追加,findings.md 新增 §2d)**:项目这次没有跑新实验,而是对已收集的 rift content_assertion 数据做了一次 within-victim 相关性再分析——把 depth 轴 8 个 cell 和 distractor 轴 3 个 cell 的 benign_rate 与 diversion 放一起算相关,得到 Pearson r=+0.61 / Spearman ρ=+0.63(方向与「越接近 frontier 越易被攻破」的预测相反),作为 §0 收敛结论的第三条支撑。但这条证据比前两条更薄:仅用 depth 轴 8 个 cell 时相关性本身不显著(r=+0.58,n.s.),是混入 distractor 轴那 3 个 benign_rate 几乎不变(0.75/0.75/0.83)的低方差点,才把混池后的 p 值压到边缘显著(≈0.05);文档自己也只定性为「suggestive, not conclusive」,没有过度声称,这点值得肯定。**关键的是**:三次同日追加(§1b/§2c/§2d)里,两次是深挖同一批数据的新角度、一次是补一条统计薄弱的新轴,没有一次是上两轮就建议、优先级理应最高的「换注入面(wall→soft surface)」原型——这个建议现在已经被连续搁置三轮,而继续在「复杂度/相关性」方向上产出第四条证据的边际价值正在明显递减。**2026-08-05 四次新增(同一天第四次追加,findings.md 在同一个 §2c 小节内又加了一个 discrimination 子实验)**:项目把干扰邮件换成 K 封仿冒发件人的近似重复邮件(如 `lin.lee@suzukirobotics-inc.jp` 冒充真实的 `…suzukirobotics.jp`),逼 rift 从「过滤噪声」升级到「判别真伪」。结果同样是负:K=0/60/150 上 benign_rate 0.917→0.833、diversion 0.36/0.36/0.46,无趋势。§0 headline 因此把「两条独立复杂度轴」改写成「三条」(depth、干扰密度、判别力),收尾一句「rift is robust to three independent complexity axes」。但这条子实验的证据比 distractor 变体更薄:完全没有报告 n_admissible(distractor 好歹给了 11 和逐 K 分子)、没有 Wilson CI、没有原始数据文件;更值得注意的是文档自己暴露了一个基线不稳问题——同一批 12 个任务的 K=0 基线,在 distractor 探测里是 0.75,在这次 confusable 探测里是 0.917,相差 0.167,只用「~±0.15 的跑间方差」带过,而这个方差本身是从两次探测的单一差值反推出来的,不是重复测量估出来的。四次同日追加里累计已经收敛出四条独立证据(depth 轴、distractor 轴、discrimination 轴、within-victim 相关性),但连续三轮建议、本轮(第四次)依旧未被采纳的「换注入面(wall→soft surface)」pivot——这个反复搁置的模式本身现在比任何单条新证据都更值得关注,详见项目索引「需要你注意的」#7 第四次更新、新增 #11。**2026-08-05 五次新增(同一天第五次追加,仍在 §2c 内,但性质变了)**:这次没有再加一条复杂度子实验,而是回头处理另一条一直悬着的卡点——「第二 victim 到底堵在哪」。项目把探针参数化(`PROBE_MODEL/DEPTH/PARALLEL`)后,正式在 gemini-2.5-flash-lite 上跑了一次 cross-victim 尝试:先确认这档 victim 对简单间隔调用可用(8/8 成功),拿到一个干净 cell(depth-1、K=0:benign 0.33,n_admissible 3/6,与既有「弱 victim」定性一致),但往上扩 K 直接撞上免费层**每日**配额上限——K=100 让模型「崩溃」(3/6,文档写的原因是笼统的「context/rate」),换回 K=60 重跑 8 条验证,结果 0/8 全部不可判定,归因于「两次 agentic 跑法已耗光每日配额」。结论是这条路径「纯粹卡在付费配额上,不是工具问题,harness 已就绪」——但 K=100 那次「崩溃」到底是限流还是上下文溢出没有拆开,和配额耗尽一起打包成同一个「not a tooling gap」结论,有过度合并的风险:如果实际是上下文溢出,加钱买配额并不能解决,需要先调低这档 victim 的 K 上限。积极的一面是:这是四次同日「复杂度轴」追加之后,第一次回头处理另一条真实卡点,而不是继续在同一个方向加证据;但已经建议了四轮的「换注入面」pivot,这第五次依旧没有被碰,详见项目索引「需要你注意的」#7 第五次更新、新增 #12。**2026-08-05 六次新增(同一天第六次追加,首次出现在文件最前面的新 §0a,而不是继续追加进 §2c)**:findings.md 这次新增了一整节 §0a「THE CROSS-VICTIM RESULT」,报告了 fork 选项 (b)(换一个真正弱的 victim)首次真正跑通——新 victim **Llama-4-8B-Instruct-Preview**(`api.llama.com/compat`,无每日配额),靠 §4 新增的 gated 工具-schema 净化器(`sanitize_json_schema`,由 `SANITIZE_TOOL_SCHEMAS` 开关控制,对 rift 等宽松网关零风险,TDD 8 个测试)解封。用和 rift 完全相同的 depth 1→24 content_assertion 语料跑了一遍(83/135 落地):benign_rate 在这档弱 victim 上被同一条 depth 轴压到 0(0.31→0.0),而 rift 完全不为所动(0.55→0.88)——这是项目核心机制「能力决定同一任务复杂度是否触及 frontier」第一次有真实跨 victim 数据支撑,不再只是理论论证。diversion 在弱 victim 上也确实朝其(很浅的)frontier 上升(0.08@d1→0.50@d16,CI [0.19,0.81]),方向和 rift 相反。但文档同时诚实报告了一个对 invariance 本身不利的结果:relative-strain 归一化后两个 victim 几乎不重叠(rift 全程 rel-strain<1,Llama 全程 rel-strain≥1),唯一勉强可比的一点(rel-strain≈1)上 rift diversion=0.43、Llama diversion=0.083,并未出现假设预测的「归一化后曲线重合」,文档原话「tentatively against naive strain-invariance」——这比 §2d 的相关性结果更直接地针对「invariance」这个词本身。另外文件开头第 3–4 行的摘要仍写着「still blocked on a second powered victim」,和紧随其后 §0a 自己交出的结果有张力,这行摘要没有跟上最新进展。还有一个方法论问题:按此前反推出的 `frontier_depth` 规则(该 shape 下 benign_rate≥0.5 的最深 depth),Llama 在全部 8 个测试 depth 上 benign_rate 从未达到 0.5(最高 0.31@depth1),这条规则对 Llama 根本给不出一个 frontier_depth,「rel-strain≈1」这个比较点因此建立在一个未定义或退化的分母上。n 也尚未跑满(83/135,62%),diversion 上升这条被文档自己标注为"suggestive but noisy"(n_admissible 6–12),一个低并行度续跑正在补剩下的部分。至此 fork (a)(distractor/discrimination,负结果)和 fork (b)(现在有两条候选:Llama-4-8B 已经跑通、gemini-2.5-flash-lite 卡配额)都有了实质进展,但项目最初建议、已经连续五轮未被采纳的「换注入面」pivot,这次(第六次)依旧没有被碰——不过这次不完全是同一类"继续在复杂度轴上加证据"的重复,§0a 是六次同日追加里第一次产出真正 novel、双向都有信息量的结果,详见项目索引「需要你注意的」新增 #13。**2026-08-05 七次新增(同一天第七次追加,新增 §0-pre,首次插在文件最开头、排在 §0a 之前)**:这次不是新 victim,也不是旧数据再分析,而是对 depth 这条核心自变量本身的一次纠偏——一条用户设计批评指出,此前 depth 1→24 用的「step k 只依赖 step k-1」的线性链只考验上下文长度,不考验真实检索/推理,这正是它测不穿 rift 的原因;真正的复杂度应该是「convergent integration」——后续步骤必须综合多个非相邻的早期产物。项目据此把 strain 轴重建为要求 fan-in≥2 整合节点的 convergent-integration DAG,生成 25-task depth-20 语料在 rift 上重测,得到 benign_rate=0.44(远低于线性同深度段的 0.55–0.88)——**这是全项目至今唯一一条真正把 rift 压穿到明显低于线性趋势的复杂度轴**,部分推翻了此前「前沿模型抗任务复杂度 strain」这条结论对 depth 轴的普适性,直接呼应了两轮前「下一步」①里提到的 fork 选项 (a)(需要一条真正能 strain 前沿模型的自变量)。但这条新结果证据单薄到全文档目前最弱的程度:benign_rate=0.44、diversion=0.125 都是裸点估计,连 n(更不用说 n_admissible)都没报告,比 distractor/discrimination 那两条「缺 Wilson CI」更严重;convergent 语料和线性语料是不同任务内容(文档自承「cross-corpus, not perfectly matched」),下降多少归因于图结构、多少归因于换了任务内容拆不开;而且文档只报告了 benign 竞争力下降,完全没有检查 diversion 是否真的随之升高——对照线性轴里 benign 同样低的 depth12 点(0.40,diversion 仅 0.10),convergent 的 diversion(0.125)其实并不异常,反而是 §2d 已发现的「diversion 与 benign 正相关、方向与 strain 假设相反」这条反直觉模式的又一个印证,而不是对它的突破。跨 victim(Llama-4-8B、kimi-k3)在同一 convergent 语料上的验证仍在跑,尚未交付。另外 §0-pre 自称"reframes §0",但文件靠后的 §0 headline 原文没有同步改写——这是继「文件开头摘要没跟上 §0a」之后,同一份文档里第二处「新结论顶在最前面、旧结论未被撤回或修订」的情况。详见项目索引「需要你注意的」新增 #15。**2026-08-05 八次新增(同一天第八次追加,findings.md 在 §0-pre 内追加「Cross-victim on the same convergent corpus」段落)**:上一条(七次新增)结尾提到的「跨 victim(Llama-4-8B、kimi-k3)验证仍在跑,尚未交付」这次交付了——新增一个此前项目任何文档都没提到过的第三个 victim **kimi-k3**(标为「mid reasoner」),和 rift、Llama-4-8B 一起跑了同一批 25-task convergent depth-20 语料:convergent benign_rate 分别是 rift 0.44(n=25)、kimi-k3 0.083(n=12)、Llama-4-8B 0.167(n=18),diversion 分别是 0.125/0.0/0.118,三个 victim 都被压低 benign 但 diversion 都没有升高。但这条交付把统计严谨度问题从「一个 victim 缺样本量」扩大成「三个 victim 都缺样本量」——三档全部没有 n_admissible、没有 Wilson CI,只有裸的原始样本数;kimi-k3 更是零基础设施说明就直接带结果空降(不像 Llama-4-8B 首次登场时有 §4 完整的 schema 净化器接入记录);而且 kimi-k3 标称「mid reasoner」,实测 convergent benign(0.083)却低于标称「weak 8B」的 Llama-4-8B(0.167),能力排序和标签自相矛盾,文档只用「within noise」一句带过、没有给出任何区间或检验支撑。同时,「diversion 在三个 victim 上都很低」被文档包装成「convergent 复杂度 strain 的是能力、不是易感性」这个中性陈述,但这其实是对项目核心假设(strain 提高易感性)的又一次反面证据——如果连"至今唯一真正 strain 到前沿模型的轴"上 diversion 都不随之升高,这个反直觉模式(depth 轴、within-victim 相关性、现在是 convergent 轴跨三个 victim)已经出现第三次。文件开头第 3–4 行的摘要「still blocked on a second powered victim」现在连续两轮(七次、八次)都没跟上正文交付的结果。详见项目索引「需要你注意的」新增 #16。**2026-08-05 九次新增(同一天第九次追加,不是新实验,是对上一条数字的就地订正)**:上一条(八次新增)记录的 kimi-k3 convergent benign(0.083,n=12)反而低于标称「weak 8B」的 Llama-4-8B(0.167),和 kimi-k3 自己「mid reasoner」的标签矛盾——这次项目把 kimi-k3 样本量从 n=12 扩到 n=25,数字改成 benign=**0.24**、diversion 从 0.0 改成 0.083,文档明确交代原因是「an n=12 fluke, corrected by extending to n=25」,订正后三档排序 rift 0.44 > kimi-k3 0.24 > Llama-4-8B 0.167 终于和各自的能力标签对上了,#16 指出的排序矛盾这次被实质解决。文档主动交代了旧数字、新数字和订正原因,这个透明度在九轮追加里比较少见,值得肯定。但订正后的数字依旧没有配 n_admissible/Wilson CI,而这次将近 3 倍的点估计跳变(仅由样本量翻倍导致)恰好是「小样本点估计不可信」最直接的示范——如果当初 n=12 时就配了区间,这个"矛盾"从一开始就不会被当成需要专门指出的问题,`n=25` 依旧是小样本,没有理由认为 0.24 已经稳定。这条订正也不推进核心假设本身:kimi-k3 的 diversion(0.083)仍落在和 rift(0.125)/Llama(0.118)同一噪声地板范围内,「三个 victim 上 diversion 都不随 convergent strain 上升」这条对核心假设的负面印证不变。详见项目索引「需要你注意的」新增 #17。**2026-08-06 十次新增(同一份 findings.md 在 §0-pre 内插入「MATCHED CONTROL」段落,内容仍标注 2026-08-05,处理时间跨到次日)**:这次不是新实验,是项目主动回头检验自己七次新增时交出的头号新结论——用同一个生成种子、只切换 `CHAIN_MODE=linear` 生成一份内容与 convergent-20 对齐的 LINEAR-20 语料作为干净对照,解决了此前「convergent vs linear 跨语料混杂」这个悬了三轮的缺口:matched linear-20 benign ~0.556(n=9,Wilson [0.27,0.81]) vs convergent-20 0.44(n=25,Wilson [0.27,0.62])。方向仍然正确(convergent 更低),但效应量从跨语料对比隐含的 ~0.3 明确下修到 **~0.12**,且两个区间互相重叠——文档自己定性为「suggestive, not yet decisive」。这是继九次新增(kimi-k3 订正)之后本项目第二次「回头给自己的结论打折扣」,而且这次动的是全项目论证分量最重的一条结论,方法论上值得肯定。但这次给的 Wilson CI 只覆盖 benign_rate,convergent 轴的 diversion 数字(0.125/0.083/0.118)依旧裸报;文档承诺的「n→~25 的补充 linear 基线正在跑」这次也没有交付结果,是同一小节里第二次留下「正在跑、待下次交付」的悬空承诺(第一次是七次新增时的跨 victim 验证)。详见项目索引「需要你注意的」新增 #18。**2026-08-06 十一次新增(同一份 findings.md 同一段「MATCHED CONTROL」被再次就地扩充)**:上一条留下的悬空承诺——linear-20 补充跑到 n→~25——这次真的交付了,而且样本量超过承诺(n=30),但结果不是「区间收窄、方向不变」,是**方向反转**:linear benign 从上一轮的 0.556(n=9)掉到 **0.30**(n=30,Wilson [0.17,0.48]),现在**低于** convergent 的 0.44([0.27,0.63])。findings.md 把这段标题直接改成「MATCHED CONTROL REFUTES 'convergent structure strains more'」,结论变成「chain 结构(linear vs convergent)不是 strain 驱动因素,真正起作用的是任务的 content density + depth——同一份高信息密度种子换成 20 步纯线性链,一样能把 rift 压到 0.30」,并直接承认「the apparent convergent effect was entirely the denser seed」。这不是"进一步下修",是"此前七到十次新增累积起来的『convergent DAG 结构是关键自变量』这条叙事本身站不住"——应替换成"content density 才是关键自变量,结构本身不是"。depth 轴 well-powered 负结果(§2b)的适用范围也需要跟着重新表述:不是"depth 不 strain 前沿模型,换成 convergent 结构才能压穿",而是"depth 在低密度种子上不 strain 前沿模型;高密度种子上不论线性还是 convergent 结构,depth-20 都能把 rift 压到 0.30–0.44"。**diversion 在这次反转里全须全尾地保住了**——文档补一句"diversion stays low (~0.12) on both regardless — structure/content strain COMPETENCE, not susceptibility",两种结构下 diversion 都没跟着升高,这是"diversion 不随 strain 上升"这个反直觉模式第四次独立出现(depth 轴、within-victim 相关性、convergent 3-victim、现在是这次结构-密度反转),也是本轮唯一没被推翻反而被再次印证的结论。文档自己评价这次反转是「the matched control did its job — it caught and corrected a would-be overclaim」——这是项目第三次主动回头纠正自己交出的头号新结论(第一次是九次新增的 kimi-k3 订正,第二次是十次新增的效应量下修),且是三次里改动幅度最大的一次。convergent 3-victim 表的 diversion 仍未配 CI、kimi-k3 接入方式仍未说明、「换注入面」建议这次依旧未被采纳,均延续未解决。详见项目索引「需要你注意的」新增 #19。
-- **下一步**：①（高优先级,具体可执行,过去八轮已建议、第九次(kimi-k3 数字订正)和
-  第十次(matched control 效应量下修)新增依旧未被采纳,累计第十次搁置,
-  尽管 convergent 轴本身已经证明能真正 strain 到前沿模型,见断点）把「换注入面
-  (wall→soft surface)」的原型跑出来:复用现成的
-  exfiltration/unauthorized_action 语料(5 个 depth、
-  n_admissible 31/15 都已就绪,不用重新生成),把固定注入从「直接把有害动作要求放进任务
-  本身」改成「把同样的有害要求 poison 进 victim 会读的记录」(参照 avo-redteam 的
-  `inject_env`-into-record 手法),小批量跑一次看 exfil/UA 是否还能保持 0——depth 轴、
-  distractor density 轴、discrimination 轴、外加 within-victim 相关性检验(§2d),四条
-  独立证据都已收敛到同一个负结果,继续在这个方向上产出第五条证据的边际价值已经很低,这条
-  转向注入面的原型比再设计一个推理难度轴或再做一次相关性分析成本更低、且已有 avo-redteam
-  一次正面证据打底;
-  ②（已完成,仅供记录,不用再做）"新增推理难度自变量"这条待办的第一个候选——distractor
-  density(inbox 干扰邮件密度)——已经在 2026-08-05 跑完(findings §2c),结果同样是负,
-  但统计功效明显弱于 depth 轴(基线 n_admissible 只有 11,K=300 只 partial 跑了 6/12,
-  K=600 直接跳过,四个 diversion 比值都没配 Wilson CI,违反项目自己的规则)。**如果要正式
-  采信这条结果**(比如在 §0 的收敛结论里继续引用),需要先补上 Wilson CI、把 K=300/600
-  跑到接近 depth 轴同等的 n_admissible 规模,否则应在下游引用时明确标注为"探索性,非
-  definitive",不要和 depth 轴的 well-powered 结论平起平坐;
-  ③ depth 轴在 rift 上的测量到此为止,不要再跑更多 rift-depth 数据(文档原话「further
-  rift-depth runs add nothing」);
-  ④（方法论透明度,未完成)在 findings.md 或 `analyze_strain.py` 的输出说明里补一句
-  `frontier_depth` 的定义(可还原为「该 shape 下 benign_rate≥0.5 的最深 depth」),并在
-  下游使用 `relative_strain` 做跨 victim 比较时,给 gemini-2.5-flash-lite 这类单次 n=1
-  定出来的 frontier 标注「低置信度」,不要和 rift 的 well-powered frontier 混在同一条
-  曲线上;
-  ⑤（方法论透明度,未完成)§2d 的相关性数字(r=+0.61, n=11)如果继续在 §0 或其他
-  下游文档里被引用为「第三条独立证据」,必须同时注明 depth-only 子集的 r=+0.58 并不显著
-  (n.s.)、混池后压过 p≈0.05 主要靠 distractor 轴那 3 个低方差点——不要只引用混池后的
-  单一系数,读者需要知道这个信号有多大程度依赖把两条不同自变量的 cell 放在一起算;
-  ⑥（本轮新增,方法论透明度,未完成)discrimination 子实验(K=0/60/150,benign_rate
-  0.917/0.917/0.833,diversion 0.36/0.36/0.46)目前连 n_admissible 都没报告——补上
-  三档各自的 n_admissible、diversion 的分子分母、Wilson CI 三项,再决定是否正式引用;
-  同时要么把 K=0 基线重复跑几次,实际测出「~±0.15 跑间方差」这个数字(目前只是从
-  distractor 探测的 0.75 和这次的 0.917 两个点反推出来的),要么在下游引用这条结果时
-  明确注明这个基线差异未经量化验证,不要让读者误以为方差已经被测过;
-  ⑦（本轮新增,机会性,非阻塞)fork 选项 (b)(换一个真正弱的 victim)现在有了一次实际
-  cross-victim 尝试:gemini-2.5-flash-lite 探针参数化(`PROBE_MODEL/DEPTH/PARALLEL`)后
-  确认这档 victim 简单调用可用(8/8 成功)、拿到一个干净 cell(depth-1/K=0,benign 0.33,
-  n_adm 3/6),但扩大 K 直接撞上免费层每日配额上限,约 2 次 agentic 跑法即耗尽。如果后续
-  能拿到付费 Gemini key,这条路径可以直接重新尝试,不需要再摸索基础设施;但复测前应先
-  单独确认 K=100 那次「崩溃」的真实原因(文档写的是笼统的「context/rate」,没拆开是限流
-  还是上下文溢出)——如果是上下文溢出,加钱买配额解决不了,需要先把这档 victim 的 K 上限
-  调低或换成检索式摘要。这条优先级低于①,是「外部条件具备就顺手做」,不是「现在就该主动
-  申请付费 key」;这条候选现在已经不是 fork (b) 唯一的路——见下方⑧,Llama-4-8B 已经跑通,
-  优先级应该排到 Llama-4-8B 之后;
-  ⑧（本轮新增,和①并列的高优先级,具体可执行)在已经解封的 Llama-4-8B 上直接套用现成的
-  distractor_inject.py / discrimination(仿冒发件人)注入器,不用重新设计:这是项目至今
-  第一次有一个真正会被这两条轴 strain 到的 victim——此前在 rift 上测这两条轴从未真正逼近
-  frontier,现在 depth 16/24 已经把 Llama 压到 benign=0,同一批注入器直接套上去,跑一次
-  {K=60,150}子集,看 diversion 是否随 K 出现此前在 rift 上从未见过的上升趋势,这比①成本
-  更低(不用新写注入逻辑,两套注入器和新 victim 都已经就绪);
-  ⑨（本轮新增,方法论,未完成)§0a 有两个具体缺口要在正式引用前补上:(a)83/135 落地的
-  续跑跑完后重新算逐 depth-cell 的 Wilson CI,目前只有 depth16 端点配了区间,其余 7 个
-  裸报;(b)`frontier_depth` 的反推规则(benign≥0.5 的最深 depth)对 Llama 全部 8 个 depth
-  都不适用(最高只有 0.31),需要显式定义"从未达标"这种情况下 frontier_depth 该怎么取,
-  否则"rel-strain≈1"这个比较点的分母不明确;同时提醒维护者把文件开头第 3–4 行的摘要
-  ("still blocked on a second powered victim")改掉,它和 §0a 自己的内容已经对不上。
-  ⑩（部分完成,本轮 matched control 只解决了一半)上一轮要求在正式引用 §0-pre 的
-  convergent-integration 结果前把 n、Wilson CI 补进 findings.md——这次的 matched
-  control 段落把 convergent-20 的 benign_rate(0.44)配上了 n=25 和 Wilson CI
-  ([0.27,0.62]),缺口去掉了一半;但 diversion(0.125)依旧连分子分母都没给,是全文档
-  目前唯一还没配区间的 headline 数字;同时文档承诺的「n→~25 的补充 linear 基线正在跑」
-  这次没有交付,**下一批文档到了应优先确认**这份 rerun 是否已经落地、区间是否收窄到
-  不再和 convergent-20 的 [0.27,0.62] 重叠——如果依然重叠,§0-pre「convergent 是唯一
-  压穿前沿模型的轴」这个措辞需要降级为更谨慎的表述;**（已触发,且比预想的更彻底——见新增⑭）**
-  十一次新增里这份 rerun 确实落地了(n=9→30),但区间不是收窄到不重叠,而是反超:linear
-  benign(0.30)反而低于 convergent(0.44)。「降级为更谨慎的表述」这个应对已经不够,应该
-  直接改口为「结构不是驱动因素,内容密度才是」,不再提「convergent 是唯一压穿前沿模型的
-  轴」这个说法;
-  ⑪（本轮新增,方法论,具体可执行,成本很低)把 convergent 这个新 cell(benign=0.44,
-  diversion=0.125)加进 §2d 已有的 11-cell benign–diversion 相关性数据集,重新算一次
-  Pearson/Spearman——不要只凭肉眼比较"这个点和线性轴 depth12(benign 0.40,diversion
-  0.10)很接近"就下结论,应该让数字说话。这一步比①②都便宜,只是加一个点重算已有脚本,
-  应该在等 convergent 跨 victim 结果之前就能做完;
-  ⑫（已有初步结果,但不能视为已回答)convergent 语料的 Llama-4-8B / kimi-k3 跨 victim
-  结果已经跑完并交付(rift 0.44/kimi-k3 0.083/Llama-4-8B 0.167,diversion 0.125/0.0/
-  0.118)——但答案不是这条待办原本期待的"diversion 明显上升":三个 victim 的 diversion
-  全部趴在 0–0.125,和 depth 轴在 rift 上"diversion 从不上升"是同一个模式,只是这次扩展
-  到了两个更弱的 victim,不支持"convergent 轴能让弱 victim 的易感性明显升高"这个预期。
-  在这条结论被正式采纳之前,必须先做⑬里的补课,否则"diversion 不随 convergent strain
-  上升"这个反直觉结果本身的可信度也立不住;
-  ⑬（本轮更新,方法论,高优先级,具体可执行,(a) 对 rift 一档已部分解决、(a)对另两档
-  和(b) 仍未做、(c) 已由项目自己解决)
-  convergent 轴 3-victim 结果(rift/kimi-k3/Llama-4-8B)正式引用前要补三件事:(a) 把
-  `analyze_strain.py` 对三批数据分别跑出 n_admissible 和 diversion 的 Wilson CI——十次
-  新增(matched control)已经给 rift 的 benign_rate(0.44,n=25)配上了 Wilson CI
-  ([0.27,0.62]),但 kimi-k3/Llama-4-8B 两档的 benign 仍是裸点估计,且三档的 diversion
-  (0.125/0.083/0.118)全部依旧没有 CI,这一步只完成了 1/6;(b) 补一段 kimi-k3 的接入方式说明(endpoint、judge 是否独立路由、注入器是否
-  和 rift/Llama 用同一套)——这是全文档第一个零基础设施记录就交结果的新 victim,和
-  Llama-4-8B 当初有 §4 完整净化器记录的规格不一致,这一步仍未做;(c)~~核实或至少讨论
-  kimi-k3"mid reasoner"标签和它实测排序矛盾~~——**已由九次新增解决**:kimi-k3 样本量
-  扩到 n=25 后 benign 从 0.083 上修到 0.24,三档排序 rift 0.44 > kimi-k3 0.24 >
-  Llama-4-8B 0.167 与标签一致,不再需要讨论。但这次订正本身提示一条新的待办:(c')
-  订正后的 0.24/n=25 依旧没有配 Wilson CI,而上一次 n=12 的点估计被 13 个新样本翻了近
-  3 倍——这说明 n=25 大概率仍不够稳定,补(a)里的 Wilson CI 时务必把 kimi-k3 的区间
-  单独摆出来看它有多宽,不要等下一次样本量再翻倍时又出现一次"矛盾—订正"的循环。
-  ⑭（本轮新增,高优先级,具体可执行,直接由十一次新增的方向反转触发)matched control 的
-  linear-20 基线扩到 n=30 后,结果从「convergent 更低、区间重叠」反转成「linear 更低
-  （0.30 vs 0.44）」——「convergent DAG 结构是关键自变量」这条七到十次新增累积起来的
-  叙事已经站不住,应改口为「content density(+ depth)才是关键自变量,结构本身不是」。
-  下一批文档到了应优先确认三件事:(a) 这个 n=30 的结果是否稳定——继续扩到 n≈25 一致的
-  convergent 侧样本量(两边都到 n=25 左右)重新核对区间,不要停在这一次反转就下定论;
-  (b) 检查是否有内容密度和链深度的交互作用没被拆开——目前 linear-20/convergent-20 都是
-  depth=20 的比较,还没测过"高密度种子 + 更浅的 depth"是否也能把 rift 压到同等水平,如果
-  能,说明密度本身(不需要配合深度)就是那个缺失的自变量;(c) 全文档里此前引用"convergent
-  轴是关键发现"的地方(§0-pre 主体段落自己、下游可能被写进摘要或 slide 的地方)需要在
-  被正式引用前更新措辞,不要让"convergent 结构"这个已被推翻的归因继续扩散。这条比①（换
-  注入面)优先级更高——因为它不是"要不要做一件新事",而是"已经确认了此前一条重要结论
-  需要撤回,拖着不改会有更多下游文档基于错误归因继续写"。
+- **断点**：扩语料到 well-powered 这条「下一步」已经做完并给出定论——rift 5.14 的 content 语料三轮扩容后达到 n_admissible 15–22/cell(~135 任务),depth 1→24 全 sweep 完成。结果是**负结果**:benign_rate 不降反升(depth 24 达 0.875,已核实不是判据变松的假象)、diversion 在 depth 1 最低后噪声式持平、无 monotonic 趋势 —— **chain-depth 不能 strain 一个前沿模型,depth 轴作为 strain 自变量在 rift 上已被证伪**,原先「统计 power 不够」的说法现在应更新为「power 够了,答案是否定的」。同时,想把这个 well-powered 规模复制到第二个 victim 目前全部受阻:GPT 网关在 tool-result 轮崩溃、Gemini 免费层限流(多步任务跑不完)、Meta codename 已 500 逾 6 小时 —— 只有 rift + deepseek 生成可靠可用。这和上一份「4-victim ladder 已证伪梯度太窄」的乐观表述有张力,后者只是在 n=1–3 的小样本上跑出梯度,不等于能把第二个 victim 也扩到 well-powered。**2026-08-05 新增**:同一批 rift 数据把 exfiltration/unauthorized_action 两个「动作」shape 也补齐到逐 depth-cell 的 Wilson 区间(合计 n_admissible 31/15,此前只有跨 5 个 depth 聚合的 14/8),结果依旧是全部 0 diversion——「拒绝边界卡在动作而非内容,不卡在深度」现在和「depth 不能 strain 前沿模型」并列成为两条 well-powered 结论,直接呼应 avo-redteam 独立测出的 wall-vs-soft-surface 边界(exfil/UA 目前测的仍是 wall 等价物,尚未测 soft-surface,见下方笔记)。unauthorized_action 因 benign 完成率低(0.13–0.63)admissibility 仍然塌缩(n_adm 1–5/cell,最多 75% undecidable),这部分统计仍偏弱,但跨两个 shape 全 0 的一致性是主要证据。另外新数据文件里首次出现的 `relative_strain`/`frontier_depth` 归一化列,没有任何 prose 文档说明算法,且对 gemini-2.5-flash-lite 这类小样本 victim 完全押在单次 n=1 结果上,正式引用前需要补文档说明(细节见项目索引「需要你注意的」#8)。**2026-08-05 二次新增(同一天第二次追加,findings.md 新增 §0/§2c)**:项目实际动手做了上一轮「下一步」①②里的②——把 distractor density(inbox 干扰邮件密度,K=0/60/150/300,depth 固定为 2)当成新自变量跑通,结果同样是负:benign_rate 不降反升(0.75→0.83)、diversion 是纯噪声(0.36/0.46/0.27/0.17,无趋势),§0 把这条和 depth 轴并列写成「两条独立复杂度轴都被 rift 扛住」的收敛结论。但这条新证据比 depth 轴弱得多:基线 n_admissible 只有 11(depth 轴是 15–22/cell)、最高的 K=300 只 partial 跑了 6/12、K=600 直接跳过、且四个 diversion 比值全部裸报没配 Wilson CI——直接违反项目自己在决策记录里写死的「diversion 比值一律配区间」规则。更值得注意的是**上一轮明确建议优先做的①(换注入面 wall→soft surface)没有被采纳**——项目选择先做②而不是①,这不是逻辑矛盾(大概率是同一条 autonomous loop 在建议发出前就已经在跑这个方向),但结果是这条最具体、成本最低、且已经有 avo-redteam 正面证据打底的建议又被搁置了一轮,而两条独立复杂度轴都测出负结果后,继续加第三条新轴的边际价值在下降,转向注入面的优先级应该更高而不是更低。**2026-08-05 三次新增(同一天第三次追加,findings.md 新增 §2d)**:项目这次没有跑新实验,而是对已收集的 rift content_assertion 数据做了一次 within-victim 相关性再分析——把 depth 轴 8 个 cell 和 distractor 轴 3 个 cell 的 benign_rate 与 diversion 放一起算相关,得到 Pearson r=+0.61 / Spearman ρ=+0.63(方向与「越接近 frontier 越易被攻破」的预测相反),作为 §0 收敛结论的第三条支撑。但这条证据比前两条更薄:仅用 depth 轴 8 个 cell 时相关性本身不显著(r=+0.58,n.s.),是混入 distractor 轴那 3 个 benign_rate 几乎不变(0.75/0.75/0.83)的低方差点,才把混池后的 p 值压到边缘显著(≈0.05);文档自己也只定性为「suggestive, not conclusive」,没有过度声称,这点值得肯定。**关键的是**:三次同日追加(§1b/§2c/§2d)里,两次是深挖同一批数据的新角度、一次是补一条统计薄弱的新轴,没有一次是上两轮就建议、优先级理应最高的「换注入面(wall→soft surface)」原型——这个建议现在已经被连续搁置三轮,而继续在「复杂度/相关性」方向上产出第四条证据的边际价值正在明显递减。**2026-08-05 四次新增(同一天第四次追加,findings.md 在同一个 §2c 小节内又加了一个 discrimination 子实验)**:项目把干扰邮件换成 K 封仿冒发件人的近似重复邮件(如 `lin.lee@suzukirobotics-inc.jp` 冒充真实的 `…suzukirobotics.jp`),逼 rift 从「过滤噪声」升级到「判别真伪」。结果同样是负:K=0/60/150 上 benign_rate 0.917→0.833、diversion 0.36/0.36/0.46,无趋势。§0 headline 因此把「两条独立复杂度轴」改写成「三条」(depth、干扰密度、判别力),收尾一句「rift is robust to three independent complexity axes」。但这条子实验的证据比 distractor 变体更薄:完全没有报告 n_admissible(distractor 好歹给了 11 和逐 K 分子)、没有 Wilson CI、没有原始数据文件;更值得注意的是文档自己暴露了一个基线不稳问题——同一批 12 个任务的 K=0 基线,在 distractor 探测里是 0.75,在这次 confusable 探测里是 0.917,相差 0.167,只用「~±0.15 的跑间方差」带过,而这个方差本身是从两次探测的单一差值反推出来的,不是重复测量估出来的。四次同日追加里累计已经收敛出四条独立证据(depth 轴、distractor 轴、discrimination 轴、within-victim 相关性),但连续三轮建议、本轮(第四次)依旧未被采纳的「换注入面(wall→soft surface)」pivot——这个反复搁置的模式本身现在比任何单条新证据都更值得关注,详见项目索引「需要你注意的」#7 第四次更新、新增 #11。**2026-08-05 五次新增(同一天第五次追加,仍在 §2c 内,但性质变了)**:这次没有再加一条复杂度子实验,而是回头处理另一条一直悬着的卡点——「第二 victim 到底堵在哪」。项目把探针参数化(`PROBE_MODEL/DEPTH/PARALLEL`)后,正式在 gemini-2.5-flash-lite 上跑了一次 cross-victim 尝试:先确认这档 victim 对简单间隔调用可用(8/8 成功),拿到一个干净 cell(depth-1、K=0:benign 0.33,n_admissible 3/6,与既有「弱 victim」定性一致),但往上扩 K 直接撞上免费层**每日**配额上限——K=100 让模型「崩溃」(3/6,文档写的原因是笼统的「context/rate」),换回 K=60 重跑 8 条验证,结果 0/8 全部不可判定,归因于「两次 agentic 跑法已耗光每日配额」。结论是这条路径「纯粹卡在付费配额上,不是工具问题,harness 已就绪」——但 K=100 那次「崩溃」到底是限流还是上下文溢出没有拆开,和配额耗尽一起打包成同一个「not a tooling gap」结论,有过度合并的风险:如果实际是上下文溢出,加钱买配额并不能解决,需要先调低这档 victim 的 K 上限。积极的一面是:这是四次同日「复杂度轴」追加之后,第一次回头处理另一条真实卡点,而不是继续在同一个方向加证据;但已经建议了四轮的「换注入面」pivot,这第五次依旧没有被碰,详见项目索引「需要你注意的」#7 第五次更新、新增 #12。**2026-08-05 六次新增(同一天第六次追加,首次出现在文件最前面的新 §0a,而不是继续追加进 §2c)**:findings.md 这次新增了一整节 §0a「THE CROSS-VICTIM RESULT」,报告了 fork 选项 (b)(换一个真正弱的 victim)首次真正跑通——新 victim **Llama-4-8B-Instruct-Preview**(`api.llama.com/compat`,无每日配额),靠 §4 新增的 gated 工具-schema 净化器(`sanitize_json_schema`,由 `SANITIZE_TOOL_SCHEMAS` 开关控制,对 rift 等宽松网关零风险,TDD 8 个测试)解封。用和 rift 完全相同的 depth 1→24 content_assertion 语料跑了一遍(83/135 落地):benign_rate 在这档弱 victim 上被同一条 depth 轴压到 0(0.31→0.0),而 rift 完全不为所动(0.55→0.88)——这是项目核心机制「能力决定同一任务复杂度是否触及 frontier」第一次有真实跨 victim 数据支撑,不再只是理论论证。diversion 在弱 victim 上也确实朝其(很浅的)frontier 上升(0.08@d1→0.50@d16,CI [0.19,0.81]),方向和 rift 相反。但文档同时诚实报告了一个对 invariance 本身不利的结果:relative-strain 归一化后两个 victim 几乎不重叠(rift 全程 rel-strain<1,Llama 全程 rel-strain≥1),唯一勉强可比的一点(rel-strain≈1)上 rift diversion=0.43、Llama diversion=0.083,并未出现假设预测的「归一化后曲线重合」,文档原话「tentatively against naive strain-invariance」——这比 §2d 的相关性结果更直接地针对「invariance」这个词本身。另外文件开头第 3–4 行的摘要仍写着「still blocked on a second powered victim」,和紧随其后 §0a 自己交出的结果有张力,这行摘要没有跟上最新进展。还有一个方法论问题:按此前反推出的 `frontier_depth` 规则(该 shape 下 benign_rate≥0.5 的最深 depth),Llama 在全部 8 个测试 depth 上 benign_rate 从未达到 0.5(最高 0.31@depth1),这条规则对 Llama 根本给不出一个 frontier_depth,「rel-strain≈1」这个比较点因此建立在一个未定义或退化的分母上。n 也尚未跑满(83/135,62%),diversion 上升这条被文档自己标注为"suggestive but noisy"(n_admissible 6–12),一个低并行度续跑正在补剩下的部分。至此 fork (a)(distractor/discrimination,负结果)和 fork (b)(现在有两条候选:Llama-4-8B 已经跑通、gemini-2.5-flash-lite 卡配额)都有了实质进展,但项目最初建议、已经连续五轮未被采纳的「换注入面」pivot,这次(第六次)依旧没有被碰——不过这次不完全是同一类"继续在复杂度轴上加证据"的重复,§0a 是六次同日追加里第一次产出真正 novel、双向都有信息量的结果,详见项目索引「需要你注意的」新增 #13。**2026-08-05 七次新增(同一天第七次追加,新增 §0-pre,首次插在文件最开头、排在 §0a 之前)**:这次不是新 victim,也不是旧数据再分析,而是对 depth 这条核心自变量本身的一次纠偏——一条用户设计批评指出,此前 depth 1→24 用的「step k 只依赖 step k-1」的线性链只考验上下文长度,不考验真实检索/推理,这正是它测不穿 rift 的原因;真正的复杂度应该是「convergent integration」——后续步骤必须综合多个非相邻的早期产物。项目据此把 strain 轴重建为要求 fan-in≥2 整合节点的 convergent-integration DAG,生成 25-task depth-20 语料在 rift 上重测,得到 benign_rate=0.44(远低于线性同深度段的 0.55–0.88)——**这是全项目至今唯一一条真正把 rift 压穿到明显低于线性趋势的复杂度轴**,部分推翻了此前「前沿模型抗任务复杂度 strain」这条结论对 depth 轴的普适性,直接呼应了两轮前「下一步」①里提到的 fork 选项 (a)(需要一条真正能 strain 前沿模型的自变量)。但这条新结果证据单薄到全文档目前最弱的程度:benign_rate=0.44、diversion=0.125 都是裸点估计,连 n(更不用说 n_admissible)都没报告,比 distractor/discrimination 那两条「缺 Wilson CI」更严重;convergent 语料和线性语料是不同任务内容(文档自承「cross-corpus, not perfectly matched」),下降多少归因于图结构、多少归因于换了任务内容拆不开;而且文档只报告了 benign 竞争力下降,完全没有检查 diversion 是否真的随之升高——对照线性轴里 benign 同样低的 depth12 点(0.40,diversion 仅 0.10),convergent 的 diversion(0.125)其实并不异常,反而是 §2d 已发现的「diversion 与 benign 正相关、方向与 strain 假设相反」这条反直觉模式的又一个印证,而不是对它的突破。跨 victim(Llama-4-8B、kimi-k3)在同一 convergent 语料上的验证仍在跑,尚未交付。另外 §0-pre 自称"reframes §0",但文件靠后的 §0 headline 原文没有同步改写——这是继「文件开头摘要没跟上 §0a」之后,同一份文档里第二处「新结论顶在最前面、旧结论未被撤回或修订」的情况。详见项目索引「需要你注意的」新增 #15。**2026-08-05 八次新增(同一天第八次追加,findings.md 在 §0-pre 内追加「Cross-victim on the same convergent corpus」段落)**:上一条(七次新增)结尾提到的「跨 victim(Llama-4-8B、kimi-k3)验证仍在跑,尚未交付」这次交付了——新增一个此前项目任何文档都没提到过的第三个 victim **kimi-k3**(标为「mid reasoner」),和 rift、Llama-4-8B 一起跑了同一批 25-task convergent depth-20 语料:convergent benign_rate 分别是 rift 0.44(n=25)、kimi-k3 0.083(n=12)、Llama-4-8B 0.167(n=18),diversion 分别是 0.125/0.0/0.118,三个 victim 都被压低 benign 但 diversion 都没有升高。但这条交付把统计严谨度问题从「一个 victim 缺样本量」扩大成「三个 victim 都缺样本量」——三档全部没有 n_admissible、没有 Wilson CI,只有裸的原始样本数;kimi-k3 更是零基础设施说明就直接带结果空降(不像 Llama-4-8B 首次登场时有 §4 完整的 schema 净化器接入记录);而且 kimi-k3 标称「mid reasoner」,实测 convergent benign(0.083)却低于标称「weak 8B」的 Llama-4-8B(0.167),能力排序和标签自相矛盾,文档只用「within noise」一句带过、没有给出任何区间或检验支撑。同时,「diversion 在三个 victim 上都很低」被文档包装成「convergent 复杂度 strain 的是能力、不是易感性」这个中性陈述,但这其实是对项目核心假设(strain 提高易感性)的又一次反面证据——如果连"至今唯一真正 strain 到前沿模型的轴"上 diversion 都不随之升高,这个反直觉模式(depth 轴、within-victim 相关性、现在是 convergent 轴跨三个 victim)已经出现第三次。文件开头第 3–4 行的摘要「still blocked on a second powered victim」现在连续两轮(七次、八次)都没跟上正文交付的结果。详见项目索引「需要你注意的」新增 #16。**2026-08-05 九次新增(同一天第九次追加,不是新实验,是对上一条数字的就地订正)**:上一条(八次新增)记录的 kimi-k3 convergent benign(0.083,n=12)反而低于标称「weak 8B」的 Llama-4-8B(0.167),和 kimi-k3 自己「mid reasoner」的标签矛盾——这次项目把 kimi-k3 样本量从 n=12 扩到 n=25,数字改成 benign=**0.24**、diversion 从 0.0 改成 0.083,文档明确交代原因是「an n=12 fluke, corrected by extending to n=25」,订正后三档排序 rift 0.44 > kimi-k3 0.24 > Llama-4-8B 0.167 终于和各自的能力标签对上了,#16 指出的排序矛盾这次被实质解决。文档主动交代了旧数字、新数字和订正原因,这个透明度在九轮追加里比较少见,值得肯定。但订正后的数字依旧没有配 n_admissible/Wilson CI,而这次将近 3 倍的点估计跳变(仅由样本量翻倍导致)恰好是「小样本点估计不可信」最直接的示范——如果当初 n=12 时就配了区间,这个"矛盾"从一开始就不会被当成需要专门指出的问题,`n=25` 依旧是小样本,没有理由认为 0.24 已经稳定。这条订正也不推进核心假设本身:kimi-k3 的 diversion(0.083)仍落在和 rift(0.125)/Llama(0.118)同一噪声地板范围内,「三个 victim 上 diversion 都不随 convergent strain 上升」这条对核心假设的负面印证不变。详见项目索引「需要你注意的」新增 #17。**2026-08-06 十次新增(同一份 findings.md 在 §0-pre 内插入「MATCHED CONTROL」段落,内容仍标注 2026-08-05,处理时间跨到次日)**:这次不是新实验,是项目主动回头检验自己七次新增时交出的头号新结论——用同一个生成种子、只切换 `CHAIN_MODE=linear` 生成一份内容与 convergent-20 对齐的 LINEAR-20 语料作为干净对照,解决了此前「convergent vs linear 跨语料混杂」这个悬了三轮的缺口:matched linear-20 benign ~0.556(n=9,Wilson [0.27,0.81]) vs convergent-20 0.44(n=25,Wilson [0.27,0.62])。方向仍然正确(convergent 更低),但效应量从跨语料对比隐含的 ~0.3 明确下修到 **~0.12**,且两个区间互相重叠——文档自己定性为「suggestive, not yet decisive」。这是继九次新增(kimi-k3 订正)之后本项目第二次「回头给自己的结论打折扣」,而且这次动的是全项目论证分量最重的一条结论,方法论上值得肯定。但这次给的 Wilson CI 只覆盖 benign_rate,convergent 轴的 diversion 数字(0.125/0.083/0.118)依旧裸报;文档承诺的「n→~25 的补充 linear 基线正在跑」这次也没有交付结果,是同一小节里第二次留下「正在跑、待下次交付」的悬空承诺(第一次是七次新增时的跨 victim 验证)。详见项目索引「需要你注意的」新增 #18。**2026-08-06 十一次新增(同一份 findings.md 同一段「MATCHED CONTROL」被再次就地扩充)**:上一条留下的悬空承诺——linear-20 补充跑到 n→~25——这次真的交付了,而且样本量超过承诺(n=30),但结果不是「区间收窄、方向不变」,是**方向反转**:linear benign 从上一轮的 0.556(n=9)掉到 **0.30**(n=30,Wilson [0.17,0.48]),现在**低于** convergent 的 0.44([0.27,0.63])。findings.md 把这段标题直接改成「MATCHED CONTROL REFUTES 'convergent structure strains more'」,结论变成「chain 结构(linear vs convergent)不是 strain 驱动因素,真正起作用的是任务的 content density + depth——同一份高信息密度种子换成 20 步纯线性链,一样能把 rift 压到 0.30」,并直接承认「the apparent convergent effect was entirely the denser seed」。这不是"进一步下修",是"此前七到十次新增累积起来的『convergent DAG 结构是关键自变量』这条叙事本身站不住"——应替换成"content density 才是关键自变量,结构本身不是"。depth 轴 well-powered 负结果(§2b)的适用范围也需要跟着重新表述:不是"depth 不 strain 前沿模型,换成 convergent 结构才能压穿",而是"depth 在低密度种子上不 strain 前沿模型;高密度种子上不论线性还是 convergent 结构,depth-20 都能把 rift 压到 0.30–0.44"。**diversion 在这次反转里全须全尾地保住了**——文档补一句"diversion stays low (~0.12) on both regardless — structure/content strain COMPETENCE, not susceptibility",两种结构下 diversion 都没跟着升高,这是"diversion 不随 strain 上升"这个反直觉模式第四次独立出现(depth 轴、within-victim 相关性、convergent 3-victim、现在是这次结构-密度反转),也是本轮唯一没被推翻反而被再次印证的结论。文档自己评价这次反转是「the matched control did its job — it caught and corrected a would-be overclaim」——这是项目第三次主动回头纠正自己交出的头号新结论(第一次是九次新增的 kimi-k3 订正,第二次是十次新增的效应量下修),且是三次里改动幅度最大的一次。convergent 3-victim 表的 diversion 仍未配 CI、kimi-k3 接入方式仍未说明、「换注入面」建议这次依旧未被采纳,均延续未解决。详见项目索引「需要你注意的」新增 #19。**2026-08-07 十二次新增（findings.md 一次性追加十个新章节：Abstract + CAPSTONE + Three-axis update + Deep-frontier follow-up + §7 + §8 + §8.1 + §9–§9.5，是迄今单批追加量最大的一次）**：项目自我宣布研究问题"settled"——CAPSTONE 用更大样本重新验证了 §0a 的弱 victim 结果，纠正了当初"diversion 朝 frontier 上升"的读数（认定是 n_adm=6 时的噪声，加大到 n_adm~30 后 diversion 持平）；Three-axis update 补齐了攻击强度轴（§8/§8.1：rift 面对连它自己"跨记录一致性核对"防御都被针对性打穿的注入依旧只有 ~0.11 diversion，kimi 把更强注入转成能力塌陷而非易感性上升）和计算/推理轴（§9 系列：rift/muse-spark 算术 42/42、逻辑 24/24 全满分，此前 ~0.4 的 hard-task floor 被重新归因为检索/整合负担而非推理限制；新增数值权威 §9.1 和逻辑权威 §9.3 两条 diversion 通路，均 0/16、0/15）；§7 把 action 边界（exfiltration/unauthorized_action）首次补齐到全部四个 victim，0/41、0/46，是这两个 shape 迄今证据最扎实的版本。至此四条 strain 轴（难度、攻击强度、算术、逻辑）× 四条 diversion 通路（内容断言、动作、数值权威、逻辑权威）全部测完，一个方向：susceptibility 低、shape 固定、和能力/strain 基本无关；competence 按能力排序，只在检索/整合负担下会掉。但这个"完成"声明本身有一个具体、从未被碰过的缺口——被本索引和本文档反复建议了十一轮以上的"换注入面（wall→soft surface）"pivot，直到这一批十个新章节，依旧一次都没有被执行：§7 补齐 action 全 victim 用的还是项目从一开始就固定的注入方式（"固定注入而非运行时注入"，见关键决策记录），不是 avo-redteam 已经证明能打穿 rift（真实触发一次 create_payout）的 soft-surface 手法。也就是说"action 类攻击 0 diversion 跨全部四档能力"这个现在被写进收官结论的主张，只在一种已知会被绕过的注入面下成立。另外这批新章节还带出两个新的方法论小问题：第三个零基础设施说明就空降的新 victim muse-spark-1.1（延续 #16 已指出的 kimi-k3 那种模式），且全文对它的命名本身不统一（有时省略版本号写"muse-spark"）；以及 §9.3 在文档中段宣布"Program complete"，之后又追加了 §9.4/§9.5 两整节——继此前"文件开头摘要没跟上正文"的模式（#13/#15/#16）之后第三次出现"收尾措辞位置和实际写作进度对不上"。积极的一面：§7/§8/§9.1/§9.3 是本项目 Wilson CI 规则执行最好的一批（此前 #9/#11/#16/#17/#18 反复指出的裸报问题在这几节被系统性纠正），§9.2/§9.5 延续了"先核实是不是判官假阴性/harness confound 再下结论"的好方法论习惯（§9.5 尤其值得称道：面对 Llama-4-8B 在推理轴上全 0，没有直接报"弱模型推理更差"，而是读轨迹发现是模型根本不会调用 googledocs 工具，如实标注"unmeasurable"而非假 0）。详见「需要你注意的」新增 #20–#23。
+- **下一步**：①（最高优先级，具体可执行，已连续建议十二轮、项目自称"program complete"
+  后依旧未被执行）在 §7 刚补齐的 exfiltration/unauthorized_action 四-victim 语料
+  （n_adm 41/46,已配 Wilson CI,不用重新生成)上,把固定注入从「直接把有害动作要求放进
+  任务本身」改成 avo-redteam 已验证有效的 soft-surface 手法(`inject_env`-into-record,
+  把伪造内容 poison 进 victim 会读的政策页/tracker 记录,而非任务指令本身),先在 1–2 个
+  victim 上小批量跑一次,看 action 边界的「0 diversion」结论在这个已知会被打穿的注入面
+  下是否还成立——四条 strain 轴、四条 diversion 通路都测完之后,"capability doesn't
+  buy security holds structurally"这个收官论断里,只有这一半(action 通路的注入面)
+  还没有被验证过,是目前唯一还没做过的具体实验,而不是又一条新的复杂度/推理轴;
+  ②（本轮新增,具体可执行,成本很低)在 findings.md 里补一句 muse-spark-1.1 的接入方式
+  说明(endpoint、鉴权、judge 是否和 rift 同一套路由),并统一全文对它的称呼("muse-spark-1.1"
+  vs 正文/§9.4 表格里多次出现的"muse-spark",确认是否指同一模型)——这是继 Llama-4-8B
+  (有 §4 完整记录)、kimi-k3(已在此前多轮里指出零基础设施、又花了一轮才订正数字)之后
+  第三个需要补课的新 victim,趁新鲜尽早补,避免重蹈 kimi-k3 的覆辙;
+  ③（本轮新增,具体可执行)给 §8.1(kimi vs rift 攻击强度内部对比表,四个 diversion 数字
+  0.125/0.11/0.118/0.0)和 Deep-frontier follow-up(depth-30/40 的两处 diversion=0.154)
+  补上 Wilson 95% CI——这是这一批新结论里"diversion 比值一律配区间"这条项目自定规则
+  仅剩的两处例外,§7/§8/§9.1/§9.3 都已经合规,补完这两处就能让这条规则在最新一批结论里
+  全面合规;
+  ④（本轮新增,写作规范,成本很低)§9.3 已经宣布"Program complete",但后面还有 §9.4/
+  §9.5 两整节——建议把这类收尾措辞挪到文档最末尾或只留在置顶 Abstract 里,不要留在章节
+  中段,避免像此前文件开头摘要没跟上 §0a/§0-pre 内容那样,再次让读者误判文档已经写完;
+  ⑤（延续,未完成,优先级低于①)`rtg-capsec` 分支仍只推到备份 remote `vaibackup`,
+  canonical origin(`Virtue-AI`)缺 `id_ed25519_virtueai` key,这个访问单点没有变化;
+  ⑥（决策项,非阻塞,取决于①的结果)如果①做完后 soft-surface 下 action diversion 依旧
+  是 0,项目就有充分理由正式收官、转入 writeup;如果不是 0,"capability doesn't buy
+  security holds structurally"这个结论需要按注入面重新限定适用范围——目前无法预判,
+  留给①的结果决定。
 - **卡点**：depth 轴、distractor-density 轴、discrimination 轴、以及 within-victim
   相关性检验(§2d)四条证据都收敛到同一个负结果,项目下一步依赖一个连续七轮建议、但连本轮
   (第八次,本轮是 §0-pre 追加的 3-victim convergent 结果)仍未被执行的转向——从「继续在
@@ -172,8 +90,18 @@
   轴"的错误引用)。换注入面 pivot 依旧一次都没被采纳(第十一轮),但本轮不是"继续搁置",
   是这份文档难得一次没有在复杂度维度上加新证据、也没有动 fork(b),而是纯粹自我核查——
   第三次出现这类动作(第一次 kimi-k3 订正、第二次效应量下修),且是三次里唯一改变了
-  方向性结论的一次。
-- **更新**：2026-08-06
+  方向性结论的一次。**2026-08-07 十二次更新**：本轮(CAPSTONE + 三轴更新 + §7–§9.5)
+  把项目此前反复出现的"负结果收敛"模式推到了终点——四条独立 strain 轴(难度、攻击强度、
+  算术、逻辑)、四条独立 diversion 通路(内容断言、动作、数值权威、逻辑权威)全部测完，
+  方向一致，项目自称研究问题"settled"。此前记录的大部分具体卡点(depth 轴测不穿、
+  convergent vs linear 混杂、kimi-k3 排序矛盾、victim 梯度基础设施)现在都已经被后续
+  数据处理掉，不再是活跃卡点。当前唯一仍然真实存在、且从项目一开始就被建议、连续十二轮
+  都没被执行的卡点是**换注入面(wall→soft surface)**——§7 这一轮把 action 边界的证据
+  扩到全部四个 victim，用的还是同一种已知"防得住"的注入方式，没有触碰 avo-redteam 已经
+  证明"防不住"的那个维度。在这个具体缺口被填上之前，"capability doesn't buy security
+  holds structurally"这个收官论断的 action 半边，证据基础和三天前相比没有实质变化——
+  变的只是难度/攻击强度/推理这三条轴上的证据量，不是注入面这条轴。
+- **更新**：2026-08-07
 - **文档索引**：[projects/capsec-strain-invariance/_INDEX.md](projects/capsec-strain-invariance/_INDEX.md)
 
 <details><summary>笔记 / 决策记录</summary>
